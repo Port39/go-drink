@@ -1,0 +1,444 @@
+openapi: 3.0.3
+info:
+  title: go-drink API
+  description: Go buy something to drink!
+  version: 1.0.0
+servers:
+  - url: 'http://localhost:8080'
+paths:
+  /items:
+    get:
+      description: Retrieve a list of all available items
+      responses:
+        500:
+          $ref: "#/components/responses/500-empty-array"
+        200:
+          description: a list of all available Items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/item"
+  /items/{id}:
+    get:
+      description: Retrieve the details of a specific item
+      parameters:
+        - name: id
+          in: path
+          description: "a uuid identifying the item that should be retrieved"
+          required: true
+      responses:
+        200:
+          description: the requested item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/item"
+        400:
+          description: in case of an invalid id, an error is returned as a plain text response
+        404:
+          description: If the uuid does not belong to any known item, this specific error is returned
+        500:
+          description: Upon internal errors, no further information is returned
+
+  /items/add:
+    post:
+      description: Add a new item that does not yet exist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: an item, but the id field has been omitted
+              properties:
+                name:
+                  type: string
+                  description: a unique name, no longer than 64 bytes
+                price:
+                  type: integer
+                  description: price in cents
+                image:
+                  type: string
+                  description: an image in form of a base64 encoded string. Not larger than 2 MiB
+                amount:
+                  type: integer
+                  description: the amount of the available items. Can't be negative
+                barcode:
+                  type: string
+                  description: a barcode identifying the item
+      responses:
+        500:
+          $ref: "#/components/responses/500"
+        400:
+          $ref: "#/components/responses/400"
+        401:
+          description: If the user is not an admin, the response is empty
+        201:
+          description: On success, the full item (including it's assigned id) is returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/item"
+  /items/update:
+    post:
+      description: Update an item referenced by the given id. All fields of the item will be set to the values given in the request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/item"
+      responses:
+        200:
+          description: If the update was successful, no data is returned
+        400:
+          $ref: "#/components/responses/400"
+        401:
+          $ref: "#/components/responses/401"
+        500:
+          $ref: "#/components/responses/500"
+  /users:
+    get:
+      description: Return a list of all registered users in the application
+      responses:
+        500:
+          $ref: "#/components/responses/500-empty-array"
+        401:
+          $ref: "#/components/responses/401"
+        200:
+          description: A list of all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/user"
+  /users/noauth:
+    get:
+      description: Retrieve a list of usernames that can be used without authentication
+      responses:
+        200:
+          description: On success, an array with the available usernames is returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        500:
+          $ref: "#/components/responses/500-empty-array"
+  /users/{id}:
+    get:
+      description: Get information on a user specified by their id
+      parameters:
+        - name: id
+          in: path
+          description: "a uuid identifying the user that should be retrieved"
+          required: true
+      responses:
+        200:
+          description: on success, the user is returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user"
+        400:
+          $ref: "#/components/responses/400"
+        401:
+          $ref: "#/components/responses/401"
+        404:
+          description: if there is no user corresponding to the given id, no data is returned
+        500:
+          $ref: "#/components/responses/500"
+  /register/password:
+    post:
+      description: Register a new user together with a password auth scheme
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: the password registration contains a username, email and the password of the new user
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: the username, containing only alphanumeric characters, as well as "-_."
+                email:
+                  type: string
+                  description: a valid email address
+                password:
+                  type: string
+                  description: the password of the new user. Must have a shannon entropy > 0.4 and a hibp check must come back negative.
+      responses:
+        201:
+          description: If the registration was successful, no data is returned
+        400:
+          $ref: "#/components/responses/400"
+        500:
+          $ref: "#/components/responses/500"
+  /auth/add:
+    post:
+      description: Add another authentication method to the current account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: the request body is a generic object to either add a none or nfc auth
+              type: object
+              properties:
+                method:
+                  type: string
+                  description: either "none" or "nfc"
+                data:
+                  type: string
+                  description: if method is nfc, data must be a hexstring
+      responses:
+        200:
+          description: if the method was added successfully, no data is returned
+        400:
+          $ref: "#/components/responses/400"
+        401:
+          $ref: "#/components/responses/401"
+        500:
+          $ref: "#/components/responses/500"
+  /login/password:
+    post:
+      description: authenticate as a user with a given password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: a username / password tuple
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          $ref: "#/components/responses/200-login"
+        400:
+          $ref: "#/components/responses/400"
+        403:
+          $ref: "#/components/responses/403"
+        500:
+          $ref: "#/components/responses/500"
+  /login/cash:
+    post:
+      description: authenticate as the cash user (aka pay with cash anonymously)
+      responses:
+        200:
+          $ref: "#/components/responses/200-login"
+        500:
+          $ref: "#/components/responses/500"
+  /login/none:
+    post:
+      description: authenticate as a user solely by providing a username
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: a username from the list returned by the /users/noauth endpoint
+              properties:
+                username:
+                  type: string
+      responses:
+        200:
+          $ref: "#/components/responses/200-login"
+        400:
+          $ref: "#/components/responses/400"
+        403:
+          $ref: "#/components/responses/403"
+        500:
+          $ref: "#/components/responses/500"
+  /login/nfc:
+    post:
+      description: authenticate as a user with an nfc token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: an nfc token that should be linked to a user in the application
+              properties:
+                token:
+                  type: string
+                  description: an nfc id encoded as a hex string
+      responses:
+        200:
+          $ref: "#/components/responses/200-login"
+        400:
+          $ref: "#/components/responses/400"
+        403:
+          $ref: "#/components/responses/403"
+        500:
+          $ref: "#/components/responses/500"
+  /logout:
+    post:
+      description: if this endpoint is called while being authenticated, the current session is destroyed
+      responses:
+        200:
+          description: in any case, no data is returned
+  /buy:
+    post:
+      description: buy the item specified in the request body, using the credits of the current user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                itemId:
+                  type: string
+                  description: the uuid of the item to buy
+                amount:
+                  type: integer
+                  description: how many items should be bought
+      responses:
+        200:
+          description: Upon a successful transaction, nothing is returned
+        400:
+          $ref: "#/components/responses/400"
+        401:
+          $ref: "#/components/responses/401"
+        404:
+          description: if the given id does not correspond to an item, a 404 status is returned
+        500:
+          $ref: "#/components/responses/500"
+  /transactions:
+    get:
+      description: retrieve a list of all transactions
+      responses:
+        200:
+          description: On success, a list of all transactions is returned
+          content:
+            application/json:
+              schema:
+                description: an array of single transactions
+                type: array
+                items:
+                  properties:
+                    id:
+                      type: string
+                      description: transaction id
+                    itemId:
+                      type: string
+                      description: uuid of the bought item
+                    userId:
+                      type: string
+                      description: uuid of the user that bought the item
+                    amount:
+                      type: integer
+                      description: how many items were bought
+                    authBackend:
+                      type: string
+                      description: the authentication emthod that was used when the transaction took place
+                    timestamp:
+                      type: integer
+                      description: the unix timestamp at which the transaction took place
+        401:
+          $ref: "#/components/responses/401"
+        500:
+          $ref: "#/components/responses/500"
+  /credit:
+    post:
+      description: update the credit of the current user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: the amount that should be added or subtracted from the current credits
+              type: object
+              properties:
+                diff:
+                  type: integer
+                  description: the difference between the current credit and the target credit amount
+      responses:
+        200:
+          description: on success, no data is returned
+        400:
+          $ref: "#/components/responses/400"
+        401:
+          $ref: "#/components/responses/401"
+        500:
+          $ref: "#/components/responses/500"
+components:
+  responses:
+    200-login:
+      description: Upon a successful login, a session token together with it's lifetime is returned
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/loginResponse"
+    400:
+      description: Upon invalid input, a detailed error message is returned
+      content:
+        "*/*":
+          schema:
+            type: string
+    401:
+      description: If the action requires a higher authorization / authentication, the response is empty
+    403:
+      description: If the authentication data is invalid, no session is returned
+    500:
+      description: Upon internal errors, no further information is returned
+    500-empty-array:
+      description: In case of an error, an empty list with no further information is returned
+      content:
+        application/json:
+          schema:
+            type: array
+  schemas:
+    item:
+      type: object
+      description: an item that can be bought
+      properties:
+        id:
+          type: string
+          description: uuid v4
+        name:
+          type: string
+          description: a unique name, no longer than 64 bytes
+        price:
+          type: integer
+          description: price in cents
+        image:
+          type: string
+          description: an image in form of a base64 encoded string. Not larger than 2 MiB
+        amount:
+          type: integer
+          description: the amount of the available items. Can't be negative
+        barcode:
+          type: string
+          description: a barcode identifying the item
+    user:
+      type: object
+      description: A user that can authenticate in some way to the application
+      properties:
+        id:
+          type: string
+          description: uuid v4
+        username:
+          type: string
+          description: A username that can be used to identify a user
+        email:
+          type: string
+          description: An email address that might be used to contact that user
+        role:
+          type: string
+          description: The role a user has in the application. Can be one of "user" od "admin"
+        credit:
+          type: integer
+          description: The amount of money a user can spend on items
+    loginResponse:
+      type: object
+      description: Upon any successful login, this object is returned
+      properties:
+        token:
+          type: string
+          description: the session token
+        validUntil:
+          type: integer
+          description: an int64 holding the UNIX timestamp at which the token becomes invalid

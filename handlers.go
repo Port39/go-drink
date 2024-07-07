@@ -195,7 +195,7 @@ func getUsers(w http.ResponseWriter, _ *http.Request) {
 	_, err = w.Write(resp)
 }
 
-func getUsersWithNoneAuth(w http.ResponseWriter, r *http.Request) {
+func getUsersWithNoneAuth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	usernames, err := users.GetUsernamesWithNoneAuth(database)
 	if err != nil {
@@ -208,6 +208,7 @@ func getUsersWithNoneAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Error while creating json response:", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("[]"))
 		return
 	}
 	_, err = w.Write(data)
