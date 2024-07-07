@@ -10,7 +10,7 @@ on:
     paths-ignore:
       - "README.md"
       - ".gitignore"
-      - "docker-compose.yml"
+      - "docker-compose.yaml"
 jobs:
   docker:
     runs-on: ubuntu-latest
