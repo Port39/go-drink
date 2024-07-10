@@ -201,6 +201,49 @@ paths:
           $ref: "#/components/responses/401"
         500:
           $ref: "#/components/responses/500"
+  /auth/password-reset/request:
+    post:
+      description: Request a password reset token to be sent to the users email address
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: a json object with a username property
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: the username for which the password should be reseted
+      responses:
+        200:
+          description: If a valid request was made, no data is returned. Note that this response status neither confirms that an email was sent, nor that the specified user exists
+        400:
+          $ref: "#/components/responses/400"
+        500:
+          $ref: "#/components/responses/500"
+  /auth/password-reset:
+    post:
+      description: Set a new password for a user associated with the given password reset token.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: a json object containing a token associated with a user, as well as a new password
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: A valid uuid. It can be requested using the /auth/password-reset/request endpoint
+                password:
+                  type: string
+                  description: The new password for the user. Must have a shannon entropy > 0.4 and a hibp check must come back negative.
+      responses:
+        201:
+          description: The password for the user associated with the reset token has been updated successfully.
+        400:
+          $ref: "#/components/responses/400"
+        500:
+          $ref: "#/components/responses/500"
   /login/password:
     post:
       description: authenticate as a user with a given password

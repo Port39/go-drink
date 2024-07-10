@@ -11,6 +11,8 @@ on:
       - "README.md"
       - ".gitignore"
       - "docker-compose.yaml"
+      - "docker-compose.dev.yaml"
+      - "openapi.yaml"
 jobs:
   docker:
     runs-on: ubuntu-latest

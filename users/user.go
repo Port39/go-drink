@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"errors"
+	"github.com/Port39/go-drink/mailing"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 	"log"
 	"strings"
+	"time"
 )
 
 const CASH_USER_ID = "00000000-0000-0000-0000-000000000000"
@@ -29,6 +31,12 @@ type AuthenticationData struct {
 	User string
 	Type string
 	Data []byte
+}
+
+type PasswordResetToken struct {
+	UserId     string
+	Token      string
+	ValidUntil int64
 }
 
 func CalculatePasswordHash(pass string) []byte {
@@ -72,6 +80,15 @@ func VerifyAuthTableExists(db *sql.DB) error {
     		type VARCHAR (16) NOT NULL,
     		data bytea,
     		PRIMARY KEY (user_id, type)
+		)`)
+	return err
+}
+
+func VerifyPasswordResetTableExists(db *sql.DB) error {
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS password_reset (
+    		user_id VARCHAR (36) UNIQUE NOT NULL,
+    		token VARCHAR (36) PRIMARY KEY,
+    		valid_until BIGINT
 		)`)
 	return err
 }
@@ -150,8 +167,14 @@ func AddUser(user User, db *sql.DB) error {
 }
 
 func AddAuthentication(auth AuthenticationData, db *sql.DB) error {
-	_, err := db.Exec("INSERT INTO auth (user_id, type, data) VALUES ($1, $2, $3) ON CONFLICT(user_id, type) DO UPDATE SET data = $4",
-		auth.User, auth.Type, auth.Data, auth.Data)
+	_, err := db.Exec("INSERT INTO auth (user_id, type, data) VALUES ($1, $2, $3) ON CONFLICT(user_id, type) DO UPDATE SET data = $3",
+		auth.User, auth.Type, auth.Data)
+	return err
+}
+
+func AddAuthenticationWithTransaction(auth AuthenticationData, tr *sql.Tx) error {
+	_, err := tr.Exec("INSERT INTO auth (user_id, type, data) VALUES ($1, $2, $3) ON CONFLICT(user_id, type) DO UPDATE SET data = $3",
+		auth.User, auth.Type, auth.Data)
 	return err
 }
 
@@ -204,4 +227,101 @@ func CheckRole(actual, target string) bool {
 		return true
 	}
 	return false
+}
+
+func addPasswordResetToken(user *User, db *sql.DB) (PasswordResetToken, error) {
+	var token PasswordResetToken
+	token.UserId = user.Id
+	token.Token = uuid.New().String()
+	token.ValidUntil = time.Now().Add(24 * time.Hour).Unix()
+	_, err := db.Exec(`INSERT INTO password_reset (user_id, token, valid_until) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET token = $2, valid_until = $3`,
+		token.UserId, token.Token, token.ValidUntil)
+	if err != nil {
+		return PasswordResetToken{}, err
+	}
+	return token, nil
+}
+
+func SendPasswordResetMail(username string, db *sql.DB) error {
+	user, err := GetUserForUsername(username, db)
+	if err != nil {
+		return err
+	}
+	if user.Id == CASH_USER_ID {
+		return nil
+	}
+	token, err := addPasswordResetToken(&user, db)
+	if err != nil {
+		return err
+	}
+	err = mailing.SendPasswordResetTokenMail(user.Username, user.Email, token.Token)
+	return err
+}
+
+func ResetPassword(token string, password string, db *sql.DB) error {
+	tokenData, err := getPasswordResetDataByToken(token, db)
+	if err != nil {
+		return err
+	}
+	if time.Now().Unix() > tokenData.ValidUntil {
+		_ = DeleteResetToken(token, db)
+		return errors.New("token expired")
+	}
+	user, err := GetUserForId(tokenData.UserId, db)
+	if err != nil {
+		return err
+	}
+	auth := AuthenticationData{
+		User: user.Id,
+		Type: "password",
+		Data: CalculatePasswordHash(password),
+	}
+	tr, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	err = DeleteResetTokenWithTransaction(token, tr)
+	if err != nil {
+		if tr.Rollback() != nil {
+			return err
+		}
+		return err
+	}
+	err = AddAuthenticationWithTransaction(auth, tr)
+	if err != nil {
+		if tr.Rollback() != nil {
+			return err
+		}
+		return err
+	}
+	return tr.Commit()
+}
+
+func getPasswordResetDataByToken(token string, db *sql.DB) (PasswordResetToken, error) {
+	result, err := db.Query(`SELECT user_id, token, valid_until FROM password_reset WHERE token = $1`, token)
+	defer result.Close()
+	if err != nil {
+		return PasswordResetToken{}, err
+	}
+	if !result.Next() {
+		return PasswordResetToken{}, errors.New("unknown token, it might have expired")
+	}
+	var resetToken PasswordResetToken
+	err = result.Scan(&resetToken.UserId, &resetToken.Token, &resetToken.ValidUntil)
+	return resetToken, err
+}
+
+func DeleteResetToken(token string, db *sql.DB) error {
+	_, err := db.Exec(`DELETE FROM password_reset WHERE token = $1`, token)
+	return err
+}
+
+func DeleteResetTokenWithTransaction(token string, tr *sql.Tx) error {
+	_, err := tr.Exec(`DELETE FROM password_reset WHERE token = $1`, token)
+	return err
+}
+
+func CleanExpiredResetTokens(db *sql.DB) error {
+	_, err := db.Exec(`DELETE FROM password_reset WHERE valid_until <= $1`, time.Now().Unix())
+	return err
 }

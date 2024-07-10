@@ -8,4 +8,7 @@ require (
 	golang.org/x/crypto v0.24.0
 )
 
-require golang.org/x/sys v0.21.0 // indirect
+require (
+	github.com/wneessen/go-mail v0.4.2 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+)

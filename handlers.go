@@ -634,3 +634,66 @@ func changeCredit(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	return
 }
+
+func requestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	rawBody, err := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		log.Println("Error reading body:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var req requestPasswordResetRequest
+	err = json.Unmarshal(rawBody, &req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	if err = req.Validate(); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	// doing things async, so response timing is not affected by the process.
+	go func() {
+		err := users.SendPasswordResetMail(req.Username, database)
+		if err != nil {
+			log.Println("Error while trying to send password reset mail:", err)
+		}
+	}()
+	w.WriteHeader(http.StatusOK)
+	return
+}
+
+func resetPassword(w http.ResponseWriter, r *http.Request) {
+	rawBody, err := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		log.Println("Error reading body:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var req resetPasswordRequest
+	err = json.Unmarshal(rawBody, &req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	if err = req.Validate(); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	err = users.ResetPassword(req.Token, req.Password, database)
+	if err != nil {
+		log.Println("Error resetting password: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	return
+}

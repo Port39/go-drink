@@ -8,8 +8,11 @@ services:
       POSTGRES_DB: "godrink"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
   app:
-    image: ghcr.io/port39/go-drink:latest
+    build:
+      dockerfile: Dockerfile
     restart: on-failure
     environment:
       GODRINK_DB: "postgresql://godrink:changeme@db:5432/godrink?sslmode=disable"
