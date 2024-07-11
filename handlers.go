@@ -28,6 +28,16 @@ func getSessionToken(r *http.Request) (string, error) {
 	return split[1], nil
 }
 
+func addCorsHeader(next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if config.AddCorsHeader {
+			w.Header().Set("Access-Control-Allow-Origin", config.CorsWhitelist)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+		next(w, r)
+	}
+}
+
 func verifyRole(role string, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessionToken, err := getSessionToken(r)

@@ -26,6 +26,8 @@ type Config struct {
 	MailLogin          string
 	MailPassword       string
 	MailFrom           string
+	AddCorsHeader      bool
+	CorsWhitelist      string
 }
 
 var config Config
@@ -86,6 +88,8 @@ func mkconf() Config {
 	if !exists {
 		mailFrom = mailLogin
 	}
+	cors, addCorsHeader := os.LookupEnv("GODRINK_CORS")
+
 	return Config{
 		DbConnectionString: dbstring,
 		Port:               port,
@@ -95,6 +99,8 @@ func mkconf() Config {
 		MailLogin:          mailLogin,
 		MailPassword:       mailPass,
 		MailFrom:           mailFrom,
+		AddCorsHeader:      addCorsHeader,
+		CorsWhitelist:      cors,
 	}
 }
 
@@ -161,33 +167,33 @@ func main() {
 
 	initialize()
 
-	http.HandleFunc("GET /items", getItems)
-	http.HandleFunc("GET /items/{id}", getItem)
-	http.HandleFunc("POST /items/add", verifyRole("admin", addItem))
-	http.HandleFunc("POST /items/update", verifyRole("admin", updateItem))
+	http.HandleFunc("GET /items", addCorsHeader(getItems))
+	http.HandleFunc("GET /items/{id}", addCorsHeader(getItem))
+	http.HandleFunc("POST /items/add", addCorsHeader(verifyRole("admin", addItem)))
+	http.HandleFunc("POST /items/update", addCorsHeader(verifyRole("admin", updateItem)))
 
-	http.HandleFunc("GET /users", verifyRole("admin", getUsers))
-	http.HandleFunc("GET /users/noauth", getUsersWithNoneAuth)
-	http.HandleFunc("GET /users/{id}", verifyRole("admin", getUser))
+	http.HandleFunc("GET /users", addCorsHeader(verifyRole("admin", getUsers)))
+	http.HandleFunc("GET /users/noauth", addCorsHeader(getUsersWithNoneAuth))
+	http.HandleFunc("GET /users/{id}", addCorsHeader(verifyRole("admin", getUser)))
 
-	http.HandleFunc("POST /register/password", registerWithPassword)
+	http.HandleFunc("POST /register/password", addCorsHeader(registerWithPassword))
 
-	http.HandleFunc("POST /auth/add", verifyRole("user", addAuthMethod))
-	http.HandleFunc("POST /auth/password-reset/request", requestPasswordReset)
-	http.HandleFunc("POST /auth/password-reset", resetPassword)
+	http.HandleFunc("POST /auth/add", addCorsHeader(verifyRole("user", addAuthMethod)))
+	http.HandleFunc("POST /auth/password-reset/request", addCorsHeader(requestPasswordReset))
+	http.HandleFunc("POST /auth/password-reset", addCorsHeader(resetPassword))
 
-	http.HandleFunc("POST /login/password", loginWithPassword)
-	http.HandleFunc("POST /login/cash", loginCash)
-	http.HandleFunc("POST /login/none", loginNone)
-	http.HandleFunc("POST /login/nfc", loginNFC)
+	http.HandleFunc("POST /login/password", addCorsHeader(loginWithPassword))
+	http.HandleFunc("POST /login/cash", addCorsHeader(loginCash))
+	http.HandleFunc("POST /login/none", addCorsHeader(loginNone))
+	http.HandleFunc("POST /login/nfc", addCorsHeader(loginNFC))
 
-	http.HandleFunc("POST /logout", logout)
+	http.HandleFunc("POST /logout", addCorsHeader(logout))
 
-	http.HandleFunc("POST /buy", verifyRole("user", buyItem))
+	http.HandleFunc("POST /buy", addCorsHeader(verifyRole("user", buyItem)))
 
-	http.HandleFunc("GET /transactions", verifyRole("admin", getTransactions))
+	http.HandleFunc("GET /transactions", addCorsHeader(verifyRole("admin", getTransactions)))
 
-	http.HandleFunc("POST /credit", verifyRole("user", changeCredit))
+	http.HandleFunc("POST /credit", addCorsHeader(verifyRole("user", changeCredit)))
 
 	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.Port), nil)
 	if err != nil {

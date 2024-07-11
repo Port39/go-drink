@@ -20,6 +20,7 @@ services:
       GODRINK_SMTPUSER: "godrink@yourmailhost.example"
       GODRINK_SMTPPASS: "changeme"
       GODRINK_SMTPFROM: "godrink@yourmailhost.example"
+      GODRINK_CORS: "http://localhost:8081"
     ports:
       - "8080:8080"
     depends_on:
