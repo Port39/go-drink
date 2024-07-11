@@ -353,6 +353,15 @@ paths:
   /transactions:
     get:
       description: retrieve a list of all transactions
+      parameters:
+        - name: since
+          description: Limit the result to all transactions since this unix timestamp
+          in: query
+          required: false
+        - name: until
+          description: Limit the result to all transactions previous to this unix timestamp
+          in: query
+          required: false
       responses:
         200:
           description: On success, a list of all transactions is returned

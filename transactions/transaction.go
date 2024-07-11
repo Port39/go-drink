@@ -31,9 +31,9 @@ func VerifyTransactionTableExists(db *sql.DB) error {
 	return err
 }
 
-func GetAllTransactions(db *sql.DB) ([]Transaction, error) {
+func GetTransactionsSince(since, until int64, db *sql.DB) ([]Transaction, error) {
 	transactions := make([]Transaction, 0)
-	result, err := db.Query("SELECT id, itemid, userid, amount, authbackend, timestamp FROM transactions")
+	result, err := db.Query("SELECT id, itemid, userid, amount, authbackend, timestamp FROM transactions WHERE timestamp > $1 AND timestamp < $2", since, until)
 	defer result.Close()
 	if err != nil {
 		return transactions, err

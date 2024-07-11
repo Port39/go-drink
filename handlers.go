@@ -12,7 +12,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func getSessionToken(r *http.Request) (string, error) {
@@ -533,9 +535,17 @@ func buyItem(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getTransactions(w http.ResponseWriter, _ *http.Request) {
+func getTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
-	transac, err := transactions.GetAllTransactions(database)
+	since := int64(0)
+	until := time.Now().Unix()
+	if r.URL.Query().Has("since") {
+		since, _ = strconv.ParseInt(r.URL.Query().Get("since"), 10, 64)
+	}
+	if r.URL.Query().Has("until") {
+		until, _ = strconv.ParseInt(r.URL.Query().Get("until"), 10, 64)
+	}
+	transac, err := transactions.GetTransactionsSince(since, until, database)
 	if err != nil {
 		log.Println("error while retrieving all transactions:", err)
 		w.WriteHeader(http.StatusInternalServerError)
