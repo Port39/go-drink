@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -575,6 +576,28 @@ func getItem(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	resp, err := json.Marshal(item)
+	if err != nil {
+		log.Println("error while creating json response:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	_, err = w.Write(resp)
+}
+
+func getItemByBarcode(w http.ResponseWriter, r *http.Request) {
+	barcodeString := strings.TrimPrefix(r.URL.Path, "/items/barcode/")
+	if !regexp.MustCompile("^[0-9]+$").MatchString(barcodeString) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	item, err := items.GetItemByBarcode(barcodeString, database)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	resp, err := json.Marshal(item)
 	if err != nil {
 		log.Println("error while creating json response:", err)

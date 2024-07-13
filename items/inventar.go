@@ -81,6 +81,22 @@ func GetItemById(id string, db *sql.DB) (Item, error) {
 	return item, err
 }
 
+func GetItemByBarcode(barcode string, db *sql.DB) (Item, error) {
+	result, err := db.Query("SELECT id, name, price, image, amount, barcode FROM items WHERE barcode = $1", barcode)
+	defer result.Close()
+	if err != nil {
+		return Item{}, err
+	}
+	if !result.Next() {
+		return Item{}, errors.New("no such item")
+	}
+	var item Item
+	var imageData []byte
+	err = result.Scan(&item.Id, &item.Name, &item.Price, &imageData, &item.Amount, &item.Barcode)
+	item.Image = base64.StdEncoding.EncodeToString(imageData)
+	return item, err
+}
+
 func InsertNewItem(item *Item, db *sql.DB) error {
 	imageData, err := base64.StdEncoding.DecodeString(item.Image)
 	if err != nil {

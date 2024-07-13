@@ -171,6 +171,7 @@ func main() {
 	http.HandleFunc("GET /items/{id}", addCorsHeader(getItem))
 	http.HandleFunc("POST /items/add", addCorsHeader(verifyRole("admin", addItem)))
 	http.HandleFunc("POST /items/update", addCorsHeader(verifyRole("admin", updateItem)))
+	http.HandleFunc("GET /items/barcode/{id}", addCorsHeader(getItemByBarcode))
 
 	http.HandleFunc("GET /users", addCorsHeader(verifyRole("admin", getUsers)))
 	http.HandleFunc("GET /users/noauth", addCorsHeader(getUsersWithNoneAuth))

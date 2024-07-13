@@ -42,6 +42,28 @@ paths:
         500:
           description: Upon internal errors, no further information is returned
 
+  /items/barcode/{id}:
+    get:
+      description: Retrieve the details of a specific item
+      parameters:
+        - name: id
+          in: path
+          description: "the barcode specific for one type of item"
+          required: true
+      responses:
+        200:
+          description: the requested item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/item"
+        400:
+          description: in case of an invalid barcode, an error is returned as a plain text response
+        404:
+          description: If the barcode does not belong to any known item, this specific error is returned
+        500:
+          description: Upon internal errors, no further information is returned
+
   /items/add:
     post:
       description: Add a new item that does not yet exist
