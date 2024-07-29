@@ -1,9 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"github.com/Port39/go-drink/items"
 	"github.com/Port39/go-drink/session"
 	"github.com/Port39/go-drink/transactions"
@@ -18,19 +18,6 @@ import (
 	"time"
 )
 
-func getSessionToken(r *http.Request) (string, error) {
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return "", errors.New("missing authorization header")
-	}
-
-	split := strings.Split(authHeader, " ")
-	if len(split) != 2 || split[0] != "Bearer" {
-		return "", errors.New("invalid token format")
-	}
-	return split[1], nil
-}
-
 func addCorsHeader(next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if config.AddCorsHeader {
@@ -41,15 +28,32 @@ func addCorsHeader(next func(w http.ResponseWriter, r *http.Request)) func(w htt
 	}
 }
 
+func enrichRequestContext(next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			next(w, r)
+			return
+		}
+
+		split := strings.Split(authHeader, " ")
+		if len(split) != 2 || split[0] != "Bearer" {
+			next(w, r)
+			return
+		}
+		next(w, r.Clone(context.WithValue(r.Context(), ContextKeySessionToken, split[1])))
+	}
+}
+
 func verifyRole(role string, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sessionToken, err := getSessionToken(r)
-		if err != nil {
+		sessionToken := r.Context().Value(ContextKeySessionToken)
+		if sessionToken == nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		s, err := sessionStore.Get(sessionToken)
+		s, err := sessionStore.Get(sessionToken.(string))
 		if err != nil || !session.IsValid(&s) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -63,9 +67,9 @@ func verifyRole(role string, next func(http.ResponseWriter, *http.Request)) func
 	}
 }
 
-func getItems(w http.ResponseWriter, _ *http.Request) {
+func getItems(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
-	aLlItems, err := items.GetALlItems(database)
+	aLlItems, err := items.GetALlItems(r.Context(), database)
 	if err != nil {
 		log.Println("Error while retrieving items from database:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -103,7 +107,7 @@ func addItem(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	_, err = items.GetItemByName(req.Name, database)
+	_, err = items.GetItemByName(r.Context(), req.Name, database)
 	if err == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Item already exists!"))
@@ -117,7 +121,7 @@ func addItem(w http.ResponseWriter, r *http.Request) {
 		Id:      uuid.New().String(),
 		Barcode: req.Barcode,
 	}
-	err = items.InsertNewItem(&item, database)
+	err = items.InsertNewItem(r.Context(), &item, database)
 	if err != nil {
 		log.Println("error inserting new Item:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -167,13 +171,13 @@ func updateItem(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	item, err := items.GetItemByName(req.Name, database)
+	item, err := items.GetItemByName(r.Context(), req.Name, database)
 	if err == nil && item.Id != req.Id {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("an item with this name already exits"))
 		return
 	}
-	err = items.UpdateItem(&items.Item{
+	err = items.UpdateItem(r.Context(), &items.Item{
 		Name:    req.Name,
 		Price:   req.Price,
 		Image:   req.Image,
@@ -189,9 +193,9 @@ func updateItem(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func getUsers(w http.ResponseWriter, _ *http.Request) {
+func getUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
-	allUsers, err := users.GetAllUsers(database)
+	allUsers, err := users.GetAllUsers(r.Context(), database)
 	if err != nil {
 		log.Println("Error while retrieving users from database:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -208,9 +212,9 @@ func getUsers(w http.ResponseWriter, _ *http.Request) {
 	_, err = w.Write(resp)
 }
 
-func getUsersWithNoneAuth(w http.ResponseWriter, _ *http.Request) {
+func getUsersWithNoneAuth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
-	usernames, err := users.GetUsernamesWithNoneAuth(database)
+	usernames, err := users.GetUsernamesWithNoneAuth(r.Context(), database)
 	if err != nil {
 		log.Println("Error getting list of users with none auth:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -249,7 +253,7 @@ func registerWithPassword(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	_, err = users.GetUserForUsername(req.Username, database)
+	_, err = users.GetUserForUsername(r.Context(), req.Username, database)
 	if err == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("user already exists"))
@@ -262,7 +266,7 @@ func registerWithPassword(w http.ResponseWriter, r *http.Request) {
 		Role:     "user",
 		Credit:   0,
 	}
-	err = users.AddUser(user, database)
+	err = users.AddUser(r.Context(), user, database)
 	if err != nil {
 		log.Println("Error saving user:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -273,7 +277,7 @@ func registerWithPassword(w http.ResponseWriter, r *http.Request) {
 		Type: "password",
 		Data: users.CalculatePasswordHash(req.Password),
 	}
-	err = users.AddAuthentication(auth, database)
+	err = users.AddAuthentication(r.Context(), auth, database)
 	if err != nil {
 		log.Println("Error saving auth:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -283,12 +287,13 @@ func registerWithPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func addAuthMethod(w http.ResponseWriter, r *http.Request) {
-	token, err := getSessionToken(r)
-	if err != nil {
+	token := r.Context().Value(ContextKeySessionToken)
+	if token == nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	sess, err := sessionStore.Get(token)
+
+	sess, err := sessionStore.Get(token.(string))
 	if err != nil || sess.AuthBackend != "password" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -319,7 +324,7 @@ func addAuthMethod(w http.ResponseWriter, r *http.Request) {
 		Type: req.Method,
 		Data: data,
 	}
-	err = users.AddAuthentication(auth, database)
+	err = users.AddAuthentication(r.Context(), auth, database)
 	if err != nil {
 		log.Println("Error saving auth data", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -343,12 +348,12 @@ func loginWithPassword(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	user, err := users.GetUserForUsername(req.Username, database)
+	user, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	auth, err := users.GetAuthForUser(user.Id, "password", database)
+	auth, err := users.GetAuthForUser(r.Context(), user.Id, "password", database)
 	if !users.VerifyPasswordHash(auth.Data, req.Password) {
 		w.WriteHeader(http.StatusForbidden)
 		return
@@ -368,8 +373,8 @@ func loginWithPassword(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(resp)
 }
 
-func loginCash(w http.ResponseWriter, _ *http.Request) {
-	user, err := users.GetUserForId(users.CASH_USER_ID, database)
+func loginCash(w http.ResponseWriter, r *http.Request) {
+	user, err := users.GetUserForId(r.Context(), users.CASH_USER_ID, database)
 	if err != nil {
 		log.Println("error logging in with cash user:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -407,12 +412,12 @@ func loginNone(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	user, err := users.GetUserForUsername(req.Username, database)
+	user, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	auth, err := users.GetAuthForUser(user.Id, "none", database)
+	auth, err := users.GetAuthForUser(r.Context(), user.Id, "none", database)
 
 	sess := session.CreateSession(user.Id, "user", auth.Type, config.SessionLifetime)
 	resp, err := json.Marshal(loginResponse{
@@ -451,12 +456,12 @@ func loginNFC(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	user, err := users.GetUserForNFCToken(token, database)
+	user, err := users.GetUserForNFCToken(r.Context(), token, database)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	auth, err := users.GetAuthForUser(user.Id, "nfc", database)
+	auth, err := users.GetAuthForUser(r.Context(), user.Id, "nfc", database)
 
 	sess := session.CreateSession(user.Id, "user", auth.Type, config.SessionLifetime)
 	resp, err := json.Marshal(loginResponse{
@@ -474,22 +479,22 @@ func loginNFC(w http.ResponseWriter, r *http.Request) {
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
-	token, err := getSessionToken(r)
-	if err != nil {
+	token := r.Context().Value(ContextKeySessionToken)
+	if token == nil {
 		// no session associated with the request, just return gracefully
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	sessionStore.Delete(token)
+	sessionStore.Delete(token.(string))
 }
 
 func buyItem(w http.ResponseWriter, r *http.Request) {
-	sessionToken, err := getSessionToken(r)
-	if err != nil {
+	sessionToken := r.Context().Value(ContextKeySessionToken)
+	if sessionToken == nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	s, err := sessionStore.Get(sessionToken)
+	s, err := sessionStore.Get(sessionToken.(string))
 	if err != nil || !session.IsValid(&s) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -514,20 +519,20 @@ func buyItem(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	item, err := items.GetItemById(req.ItemId, database)
+	item, err := items.GetItemById(r.Context(), req.ItemId, database)
 	if err != nil {
 		log.Println("error getting item:", err)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("no such item"))
 		return
 	}
-	user, err := users.GetUserForId(s.UserId, database)
+	user, err := users.GetUserForId(r.Context(), s.UserId, database)
 	if err != nil {
 		log.Println("error getting user from session:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	err = transactions.MakeTransaction(&user, &item, req.Amount, s.AuthBackend, database)
+	err = transactions.MakeTransaction(r.Context(), &user, &item, req.Amount, s.AuthBackend, database)
 	if err != nil {
 		log.Println("error while performing transaction", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -546,7 +551,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Has("until") {
 		until, _ = strconv.ParseInt(r.URL.Query().Get("until"), 10, 64)
 	}
-	transac, err := transactions.GetTransactionsSince(since, until, database)
+	transac, err := transactions.GetTransactionsSince(r.Context(), since, until, database)
 	if err != nil {
 		log.Println("error while retrieving all transactions:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -571,7 +576,7 @@ func getItem(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("invalid item id, uuid expected"))
 		return
 	}
-	item, err := items.GetItemById(id.String(), database)
+	item, err := items.GetItemById(r.Context(), id.String(), database)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -592,7 +597,7 @@ func getItemByBarcode(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	item, err := items.GetItemByBarcode(barcodeString, database)
+	item, err := items.GetItemByBarcode(r.Context(), barcodeString, database)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -616,7 +621,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("invalid user id, uuid expected"))
 		return
 	}
-	user, err := users.GetUserForId(id.String(), database)
+	user, err := users.GetUserForId(r.Context(), id.String(), database)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -632,17 +637,17 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func changeCredit(w http.ResponseWriter, r *http.Request) {
-	token, err := getSessionToken(r)
-	if err != nil {
+	token := r.Context().Value(ContextKeySessionToken)
+	if token == nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	sess, err := sessionStore.Get(token)
+	sess, err := sessionStore.Get(token.(string))
 	if err != nil || sess.AuthBackend != "password" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	user, err := users.GetUserForId(sess.UserId, database)
+	user, err := users.GetUserForId(r.Context(), sess.UserId, database)
 	if err != nil {
 		log.Println("Error getting user:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -668,7 +673,7 @@ func changeCredit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.Credit += req.Diff
-	err = users.UpdateUser(&user, database)
+	err = users.UpdateUser(r.Context(), &user, database)
 	if err != nil {
 		log.Println("Error updating user in database:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -730,7 +735,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	err = users.ResetPassword(req.Token, req.Password, database)
+	err = users.ResetPassword(r.Context(), req.Token, req.Password, database)
 	if err != nil {
 		log.Println("Error resetting password: ", err)
 		w.WriteHeader(http.StatusBadRequest)

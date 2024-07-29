@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"github.com/Port39/go-drink/items"
@@ -31,9 +32,9 @@ func VerifyTransactionTableExists(db *sql.DB) error {
 	return err
 }
 
-func GetTransactionsSince(since, until int64, db *sql.DB) ([]Transaction, error) {
+func GetTransactionsSince(ctx context.Context, since, until int64, db *sql.DB) ([]Transaction, error) {
 	transactions := make([]Transaction, 0)
-	result, err := db.Query("SELECT id, itemid, userid, amount, authbackend, timestamp FROM transactions WHERE timestamp > $1 AND timestamp < $2", since, until)
+	result, err := db.QueryContext(ctx, "SELECT id, itemid, userid, amount, authbackend, timestamp FROM transactions WHERE timestamp > $1 AND timestamp < $2", since, until)
 	defer result.Close()
 	if err != nil {
 		return transactions, err
@@ -49,7 +50,7 @@ func GetTransactionsSince(since, until int64, db *sql.DB) ([]Transaction, error)
 	return transactions, nil
 }
 
-func MakeTransaction(user *users.User, item *items.Item, amount int, authBackend string, db *sql.DB) error {
+func MakeTransaction(ctx context.Context, user *users.User, item *items.Item, amount int, authBackend string, db *sql.DB) error {
 	finalPrice := item.Price * amount
 	if user.Credit < finalPrice {
 		return errors.New("not enough credits")
@@ -63,7 +64,7 @@ func MakeTransaction(user *users.User, item *items.Item, amount int, authBackend
 	}
 	if !user.IsCashUser() {
 		user.Credit = user.Credit - finalPrice
-		err = users.UpdateUserWithTransaction(user, tx)
+		err = users.UpdateUserWithTransaction(ctx, user, tx)
 		if err != nil {
 			err := tx.Rollback()
 			if err != nil {
@@ -73,7 +74,7 @@ func MakeTransaction(user *users.User, item *items.Item, amount int, authBackend
 		}
 	}
 	item.Amount = item.Amount - amount
-	err = items.UpdateItemWithTransaction(item, tx)
+	err = items.UpdateItemWithTransaction(ctx, item, tx)
 	if err != nil {
 		err := tx.Rollback()
 		if err != nil {
@@ -81,7 +82,7 @@ func MakeTransaction(user *users.User, item *items.Item, amount int, authBackend
 		}
 		return err
 	}
-	_, err = tx.Exec(`INSERT INTO transactions (id, itemId, userId, amount, authBackend, timestamp) 
+	_, err = tx.ExecContext(ctx, `INSERT INTO transactions (id, itemId, userId, amount, authBackend, timestamp) 
 		VALUES ($1, $2, $3, $4, $5, $6)`, uuid.New().String(), item.Id, user.Id, amount, authBackend, time.Now().Unix())
 	if err != nil {
 		err := tx.Rollback()

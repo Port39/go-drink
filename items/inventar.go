@@ -1,6 +1,7 @@
 package items
 
 import (
+	"context"
 	"database/sql"
 	"encoding/base64"
 	"errors"
@@ -28,10 +29,10 @@ func VerifyItemsTableExists(db *sql.DB) error {
 	return err
 }
 
-func GetALlItems(db *sql.DB) ([]Item, error) {
+func GetALlItems(ctx context.Context, db *sql.DB) ([]Item, error) {
 	items := make([]Item, 0)
 
-	result, err := db.Query(`SELECT id, name, price, image, amount, barcode FROM items`)
+	result, err := db.QueryContext(ctx, `SELECT id, name, price, image, amount, barcode FROM items`)
 	defer result.Close()
 	if err != nil {
 		return nil, err
@@ -49,8 +50,8 @@ func GetALlItems(db *sql.DB) ([]Item, error) {
 	return items, nil
 }
 
-func GetItemByName(name string, db *sql.DB) (Item, error) {
-	result, err := db.Query("SELECT id, name, price, image, amount, barcode FROM items WHERE name = $1", name)
+func GetItemByName(ctx context.Context, name string, db *sql.DB) (Item, error) {
+	result, err := db.QueryContext(ctx, "SELECT id, name, price, image, amount, barcode FROM items WHERE name = $1", name)
 	defer result.Close()
 	if err != nil {
 		return Item{}, err
@@ -65,8 +66,8 @@ func GetItemByName(name string, db *sql.DB) (Item, error) {
 	return item, err
 }
 
-func GetItemById(id string, db *sql.DB) (Item, error) {
-	result, err := db.Query("SELECT id, name, price, image, amount, barcode FROM items WHERE id = $1", id)
+func GetItemById(ctx context.Context, id string, db *sql.DB) (Item, error) {
+	result, err := db.QueryContext(ctx, "SELECT id, name, price, image, amount, barcode FROM items WHERE id = $1", id)
 	defer result.Close()
 	if err != nil {
 		return Item{}, err
@@ -81,8 +82,8 @@ func GetItemById(id string, db *sql.DB) (Item, error) {
 	return item, err
 }
 
-func GetItemByBarcode(barcode string, db *sql.DB) (Item, error) {
-	result, err := db.Query("SELECT id, name, price, image, amount, barcode FROM items WHERE barcode = $1", barcode)
+func GetItemByBarcode(ctx context.Context, barcode string, db *sql.DB) (Item, error) {
+	result, err := db.QueryContext(ctx, "SELECT id, name, price, image, amount, barcode FROM items WHERE barcode = $1", barcode)
 	defer result.Close()
 	if err != nil {
 		return Item{}, err
@@ -97,32 +98,32 @@ func GetItemByBarcode(barcode string, db *sql.DB) (Item, error) {
 	return item, err
 }
 
-func InsertNewItem(item *Item, db *sql.DB) error {
+func InsertNewItem(ctx context.Context, item *Item, db *sql.DB) error {
 	imageData, err := base64.StdEncoding.DecodeString(item.Image)
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("INSERT INTO items (id, name, price, image, amount, barcode) VALUES ($1, $2, $3, $4, $5, $6)",
+	_, err = db.ExecContext(ctx, "INSERT INTO items (id, name, price, image, amount, barcode) VALUES ($1, $2, $3, $4, $5, $6)",
 		item.Id, item.Name, item.Price, imageData, item.Amount, item.Barcode)
 	return err
 }
 
-func UpdateItemWithTransaction(item *Item, tx *sql.Tx) error {
+func UpdateItemWithTransaction(ctx context.Context, item *Item, tx *sql.Tx) error {
 	imageData, err := base64.StdEncoding.DecodeString(item.Image)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec("UPDATE items SET name = $1, price = $2, image = $3, amount = $4, barcode = $5 WHERE id = $6",
+	_, err = tx.ExecContext(ctx, "UPDATE items SET name = $1, price = $2, image = $3, amount = $4, barcode = $5 WHERE id = $6",
 		item.Name, item.Price, imageData, item.Amount, item.Barcode, item.Id)
 	return err
 }
 
-func UpdateItem(item *Item, tx *sql.DB) error {
+func UpdateItem(ctx context.Context, item *Item, db *sql.DB) error {
 	imageData, err := base64.StdEncoding.DecodeString(item.Image)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec("UPDATE items SET name = $1, price = $2, image = $3, amount = $4, barcode = $5 WHERE id = $6",
+	_, err = db.ExecContext(ctx, "UPDATE items SET name = $1, price = $2, image = $3, amount = $4, barcode = $5 WHERE id = $6",
 		item.Name, item.Price, imageData, item.Amount, item.Barcode, item.Id)
 	return err
 }

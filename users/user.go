@@ -2,6 +2,7 @@ package users
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"errors"
@@ -93,8 +94,8 @@ func VerifyPasswordResetTableExists(db *sql.DB) error {
 	return err
 }
 
-func GetUserForId(id string, db *sql.DB) (User, error) {
-	result, err := db.Query("SELECT id, username, email, role, credit FROM users WHERE id = $1", id)
+func GetUserForId(ctx context.Context, id string, db *sql.DB) (User, error) {
+	result, err := db.QueryContext(ctx, "SELECT id, username, email, role, credit FROM users WHERE id = $1", id)
 	defer result.Close()
 	if err != nil {
 		return User{}, err
@@ -107,8 +108,8 @@ func GetUserForId(id string, db *sql.DB) (User, error) {
 	return user, err
 }
 
-func GetUserForUsername(username string, db *sql.DB) (User, error) {
-	result, err := db.Query("SELECT id, username, email, role, credit FROM users WHERE username = $1", username)
+func GetUserForUsername(ctx context.Context, username string, db *sql.DB) (User, error) {
+	result, err := db.QueryContext(ctx, "SELECT id, username, email, role, credit FROM users WHERE username = $1", username)
 	defer result.Close()
 	if err != nil {
 		return User{}, err
@@ -121,8 +122,8 @@ func GetUserForUsername(username string, db *sql.DB) (User, error) {
 	return user, err
 }
 
-func GetUserForNFCToken(token []byte, db *sql.DB) (User, error) {
-	result, err := db.Query(`SELECT user_id FROM auth WHERE type = 'nfc' AND data = $1`, token)
+func GetUserForNFCToken(ctx context.Context, token []byte, db *sql.DB) (User, error) {
+	result, err := db.QueryContext(ctx, `SELECT user_id FROM auth WHERE type = 'nfc' AND data = $1`, token)
 	defer result.Close()
 	if err != nil {
 		return User{}, err
@@ -135,11 +136,11 @@ func GetUserForNFCToken(token []byte, db *sql.DB) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
-	return GetUserForId(userId, db)
+	return GetUserForId(ctx, userId, db)
 }
 
-func GetUsernamesWithNoneAuth(db *sql.DB) ([]string, error) {
-	result, err := db.Query(`SELECT user_id FROM auth WHERE type = 'none'`)
+func GetUsernamesWithNoneAuth(ctx context.Context, db *sql.DB) ([]string, error) {
+	result, err := db.QueryContext(ctx, `SELECT user_id FROM auth WHERE type = 'none'`)
 	defer result.Close()
 	if err != nil {
 		return nil, err
@@ -151,7 +152,7 @@ func GetUsernamesWithNoneAuth(db *sql.DB) ([]string, error) {
 		if err != nil {
 			continue
 		}
-		user, err := GetUserForId(userId, db)
+		user, err := GetUserForId(ctx, userId, db)
 		if err != nil {
 			continue
 		}
@@ -160,26 +161,26 @@ func GetUsernamesWithNoneAuth(db *sql.DB) ([]string, error) {
 	return names, nil
 }
 
-func AddUser(user User, db *sql.DB) error {
-	_, err := db.Exec("INSERT INTO users (id, username, email, role, credit) VALUES ($1, $2, $3, $4, $5)",
+func AddUser(ctx context.Context, user User, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, "INSERT INTO users (id, username, email, role, credit) VALUES ($1, $2, $3, $4, $5)",
 		user.Id, user.Username, user.Email, user.Role, user.Credit)
 	return err
 }
 
-func AddAuthentication(auth AuthenticationData, db *sql.DB) error {
-	_, err := db.Exec("INSERT INTO auth (user_id, type, data) VALUES ($1, $2, $3) ON CONFLICT(user_id, type) DO UPDATE SET data = $3",
+func AddAuthentication(ctx context.Context, auth AuthenticationData, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, "INSERT INTO auth (user_id, type, data) VALUES ($1, $2, $3) ON CONFLICT(user_id, type) DO UPDATE SET data = $3",
 		auth.User, auth.Type, auth.Data)
 	return err
 }
 
-func AddAuthenticationWithTransaction(auth AuthenticationData, tr *sql.Tx) error {
-	_, err := tr.Exec("INSERT INTO auth (user_id, type, data) VALUES ($1, $2, $3) ON CONFLICT(user_id, type) DO UPDATE SET data = $3",
+func AddAuthenticationWithTransaction(ctx context.Context, auth AuthenticationData, tr *sql.Tx) error {
+	_, err := tr.ExecContext(ctx, "INSERT INTO auth (user_id, type, data) VALUES ($1, $2, $3) ON CONFLICT(user_id, type) DO UPDATE SET data = $3",
 		auth.User, auth.Type, auth.Data)
 	return err
 }
 
-func GetAuthForUser(id, authtype string, db *sql.DB) (AuthenticationData, error) {
-	result, err := db.Query("SELECT user_id, type, data FROM auth WHERE user_id = $1 AND type = $2", id, authtype)
+func GetAuthForUser(ctx context.Context, id, authtype string, db *sql.DB) (AuthenticationData, error) {
+	result, err := db.QueryContext(ctx, "SELECT user_id, type, data FROM auth WHERE user_id = $1 AND type = $2", id, authtype)
 	defer result.Close()
 	if err != nil {
 		return AuthenticationData{}, err
@@ -192,9 +193,9 @@ func GetAuthForUser(id, authtype string, db *sql.DB) (AuthenticationData, error)
 	return auth, err
 }
 
-func GetAllUsers(db *sql.DB) ([]User, error) {
+func GetAllUsers(ctx context.Context, db *sql.DB) ([]User, error) {
 	users := make([]User, 0)
-	result, err := db.Query("SELECT id, username, email, role, credit FROM users")
+	result, err := db.QueryContext(ctx, "SELECT id, username, email, role, credit FROM users")
 	defer result.Close()
 	if err != nil {
 		return users, err
@@ -210,14 +211,14 @@ func GetAllUsers(db *sql.DB) ([]User, error) {
 	return users, nil
 }
 
-func UpdateUserWithTransaction(user *User, tx *sql.Tx) error {
-	_, err := tx.Exec(`UPDATE users SET username = $1, email = $2, role = $3, credit = $4 WHERE id = $5`,
+func UpdateUserWithTransaction(ctx context.Context, user *User, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `UPDATE users SET username = $1, email = $2, role = $3, credit = $4 WHERE id = $5`,
 		user.Username, user.Email, user.Role, user.Credit, user.Id)
 	return err
 }
 
-func UpdateUser(user *User, db *sql.DB) error {
-	_, err := db.Exec(`UPDATE users SET username = $1, email = $2, role = $3, credit = $4 WHERE id = $5`,
+func UpdateUser(ctx context.Context, user *User, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `UPDATE users SET username = $1, email = $2, role = $3, credit = $4 WHERE id = $5`,
 		user.Username, user.Email, user.Role, user.Credit, user.Id)
 	return err
 }
@@ -229,12 +230,12 @@ func CheckRole(actual, target string) bool {
 	return false
 }
 
-func addPasswordResetToken(user *User, db *sql.DB) (PasswordResetToken, error) {
+func addPasswordResetToken(ctx context.Context, user *User, db *sql.DB) (PasswordResetToken, error) {
 	var token PasswordResetToken
 	token.UserId = user.Id
 	token.Token = uuid.New().String()
 	token.ValidUntil = time.Now().Add(24 * time.Hour).Unix()
-	_, err := db.Exec(`INSERT INTO password_reset (user_id, token, valid_until) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET token = $2, valid_until = $3`,
+	_, err := db.ExecContext(ctx, `INSERT INTO password_reset (user_id, token, valid_until) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET token = $2, valid_until = $3`,
 		token.UserId, token.Token, token.ValidUntil)
 	if err != nil {
 		return PasswordResetToken{}, err
@@ -243,14 +244,15 @@ func addPasswordResetToken(user *User, db *sql.DB) (PasswordResetToken, error) {
 }
 
 func SendPasswordResetMail(username string, db *sql.DB) error {
-	user, err := GetUserForUsername(username, db)
+	ctx := context.Background()
+	user, err := GetUserForUsername(ctx, username, db)
 	if err != nil {
 		return err
 	}
 	if user.Id == CASH_USER_ID {
 		return nil
 	}
-	token, err := addPasswordResetToken(&user, db)
+	token, err := addPasswordResetToken(ctx, &user, db)
 	if err != nil {
 		return err
 	}
@@ -258,16 +260,16 @@ func SendPasswordResetMail(username string, db *sql.DB) error {
 	return err
 }
 
-func ResetPassword(token string, password string, db *sql.DB) error {
-	tokenData, err := getPasswordResetDataByToken(token, db)
+func ResetPassword(ctx context.Context, token string, password string, db *sql.DB) error {
+	tokenData, err := getPasswordResetDataByToken(ctx, token, db)
 	if err != nil {
 		return err
 	}
 	if time.Now().Unix() > tokenData.ValidUntil {
-		_ = DeleteResetToken(token, db)
+		_ = DeleteResetToken(ctx, token, db)
 		return errors.New("token expired")
 	}
-	user, err := GetUserForId(tokenData.UserId, db)
+	user, err := GetUserForId(ctx, tokenData.UserId, db)
 	if err != nil {
 		return err
 	}
@@ -280,14 +282,14 @@ func ResetPassword(token string, password string, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	err = DeleteResetTokenWithTransaction(token, tr)
+	err = DeleteResetTokenWithTransaction(ctx, token, tr)
 	if err != nil {
 		if tr.Rollback() != nil {
 			return err
 		}
 		return err
 	}
-	err = AddAuthenticationWithTransaction(auth, tr)
+	err = AddAuthenticationWithTransaction(ctx, auth, tr)
 	if err != nil {
 		if tr.Rollback() != nil {
 			return err
@@ -297,8 +299,8 @@ func ResetPassword(token string, password string, db *sql.DB) error {
 	return tr.Commit()
 }
 
-func getPasswordResetDataByToken(token string, db *sql.DB) (PasswordResetToken, error) {
-	result, err := db.Query(`SELECT user_id, token, valid_until FROM password_reset WHERE token = $1`, token)
+func getPasswordResetDataByToken(ctx context.Context, token string, db *sql.DB) (PasswordResetToken, error) {
+	result, err := db.QueryContext(ctx, `SELECT user_id, token, valid_until FROM password_reset WHERE token = $1`, token)
 	defer result.Close()
 	if err != nil {
 		return PasswordResetToken{}, err
@@ -311,17 +313,17 @@ func getPasswordResetDataByToken(token string, db *sql.DB) (PasswordResetToken, 
 	return resetToken, err
 }
 
-func DeleteResetToken(token string, db *sql.DB) error {
-	_, err := db.Exec(`DELETE FROM password_reset WHERE token = $1`, token)
+func DeleteResetToken(ctx context.Context, token string, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `DELETE FROM password_reset WHERE token = $1`, token)
 	return err
 }
 
-func DeleteResetTokenWithTransaction(token string, tr *sql.Tx) error {
-	_, err := tr.Exec(`DELETE FROM password_reset WHERE token = $1`, token)
+func DeleteResetTokenWithTransaction(ctx context.Context, token string, tr *sql.Tx) error {
+	_, err := tr.ExecContext(ctx, `DELETE FROM password_reset WHERE token = $1`, token)
 	return err
 }
 
-func CleanExpiredResetTokens(db *sql.DB) error {
-	_, err := db.Exec(`DELETE FROM password_reset WHERE valid_until <= $1`, time.Now().Unix())
+func CleanExpiredResetTokens(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `DELETE FROM password_reset WHERE valid_until <= $1`, time.Now().Unix())
 	return err
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/Port39/go-drink/items"
@@ -16,6 +17,8 @@ import (
 	"strings"
 	"time"
 )
+
+const ContextKeySessionToken = "SESSION_TOKEN"
 
 type Config struct {
 	DbConnectionString string
@@ -141,7 +144,7 @@ func initialize() {
 			select {
 			case t := <-databaseCleanupTicker.C:
 				log.Println("Starting Database Cleanup at:", t.Format(time.DateTime))
-				if err := users.CleanExpiredResetTokens(database); err != nil {
+				if err := users.CleanExpiredResetTokens(context.Background(), database); err != nil {
 					log.Println("Error while deleting expired password reset tokens:", err)
 				}
 			}
@@ -167,34 +170,34 @@ func main() {
 
 	initialize()
 
-	http.HandleFunc("GET /items", addCorsHeader(getItems))
-	http.HandleFunc("GET /items/{id}", addCorsHeader(getItem))
-	http.HandleFunc("POST /items/add", addCorsHeader(verifyRole("admin", addItem)))
-	http.HandleFunc("POST /items/update", addCorsHeader(verifyRole("admin", updateItem)))
-	http.HandleFunc("GET /items/barcode/{id}", addCorsHeader(getItemByBarcode))
+	http.HandleFunc("GET /items", addCorsHeader(enrichRequestContext(getItems)))
+	http.HandleFunc("GET /items/{id}", addCorsHeader(enrichRequestContext(getItem)))
+	http.HandleFunc("POST /items/add", addCorsHeader(enrichRequestContext(verifyRole("admin", addItem))))
+	http.HandleFunc("POST /items/update", addCorsHeader(enrichRequestContext(verifyRole("admin", updateItem))))
+	http.HandleFunc("GET /items/barcode/{id}", addCorsHeader(enrichRequestContext(getItemByBarcode)))
 
-	http.HandleFunc("GET /users", addCorsHeader(verifyRole("admin", getUsers)))
-	http.HandleFunc("GET /users/noauth", addCorsHeader(getUsersWithNoneAuth))
-	http.HandleFunc("GET /users/{id}", addCorsHeader(verifyRole("admin", getUser)))
+	http.HandleFunc("GET /users", addCorsHeader(enrichRequestContext(verifyRole("admin", getUsers))))
+	http.HandleFunc("GET /users/noauth", addCorsHeader(enrichRequestContext(getUsersWithNoneAuth)))
+	http.HandleFunc("GET /users/{id}", addCorsHeader(enrichRequestContext(verifyRole("admin", getUser))))
 
-	http.HandleFunc("POST /register/password", addCorsHeader(registerWithPassword))
+	http.HandleFunc("POST /register/password", addCorsHeader(enrichRequestContext(registerWithPassword)))
 
-	http.HandleFunc("POST /auth/add", addCorsHeader(verifyRole("user", addAuthMethod)))
-	http.HandleFunc("POST /auth/password-reset/request", addCorsHeader(requestPasswordReset))
-	http.HandleFunc("POST /auth/password-reset", addCorsHeader(resetPassword))
+	http.HandleFunc("POST /auth/add", addCorsHeader(enrichRequestContext(verifyRole("user", addAuthMethod))))
+	http.HandleFunc("POST /auth/password-reset/request", addCorsHeader(enrichRequestContext(requestPasswordReset)))
+	http.HandleFunc("POST /auth/password-reset", addCorsHeader(enrichRequestContext(resetPassword)))
 
-	http.HandleFunc("POST /login/password", addCorsHeader(loginWithPassword))
-	http.HandleFunc("POST /login/cash", addCorsHeader(loginCash))
-	http.HandleFunc("POST /login/none", addCorsHeader(loginNone))
-	http.HandleFunc("POST /login/nfc", addCorsHeader(loginNFC))
+	http.HandleFunc("POST /login/password", addCorsHeader(enrichRequestContext(loginWithPassword)))
+	http.HandleFunc("POST /login/cash", addCorsHeader(enrichRequestContext(loginCash)))
+	http.HandleFunc("POST /login/none", addCorsHeader(enrichRequestContext(loginNone)))
+	http.HandleFunc("POST /login/nfc", addCorsHeader(enrichRequestContext(loginNFC)))
 
-	http.HandleFunc("POST /logout", addCorsHeader(logout))
+	http.HandleFunc("POST /logout", addCorsHeader(enrichRequestContext(logout)))
 
-	http.HandleFunc("POST /buy", addCorsHeader(verifyRole("user", buyItem)))
+	http.HandleFunc("POST /buy", addCorsHeader(enrichRequestContext(verifyRole("user", buyItem))))
 
-	http.HandleFunc("GET /transactions", addCorsHeader(verifyRole("admin", getTransactions)))
+	http.HandleFunc("GET /transactions", addCorsHeader(enrichRequestContext(verifyRole("admin", getTransactions))))
 
-	http.HandleFunc("POST /credit", addCorsHeader(verifyRole("user", changeCredit)))
+	http.HandleFunc("POST /credit", addCorsHeader(enrichRequestContext(verifyRole("user", changeCredit))))
 
 	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.Port), nil)
 	if err != nil {
