@@ -13,6 +13,8 @@ on:
       - "docker-compose.yaml"
       - "docker-compose.dev.yaml"
       - "openapi.yaml"
+      - ".run"
+      - "http-test"
 jobs:
   docker:
     runs-on: ubuntu-latest
