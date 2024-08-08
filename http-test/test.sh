@@ -7,4 +7,4 @@ while
 do echo Waiting for Go Drink; sleep 1; done
 set -e
 
-docker run --network="host" --rm -v $PWD:/workdir jetbrains/intellij-http-client -e dev -v http-test/http-client.env.json -r http-test-reports  http-test/*.http
+docker run --network="host" --rm -v $PWD:/workdir jetbrains/intellij-http-client -e dev -v http-test/http-client.env.json -r test-reports  http-test/*.http
