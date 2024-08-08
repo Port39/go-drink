@@ -61,7 +61,7 @@ func verifyRole(role string, next func(http.ResponseWriter, *http.Request)) func
 		}
 
 		if !users.CheckRole(s.Role, role) {
-			respondUnauthorized(w)
+			respondForbidden(w)
 			return
 		}
 		next(w, r)
