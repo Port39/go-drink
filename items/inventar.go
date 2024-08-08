@@ -29,7 +29,7 @@ func VerifyItemsTableExists(db *sql.DB) error {
 	return err
 }
 
-func GetALlItems(ctx context.Context, db *sql.DB) ([]Item, error) {
+func GetAllItems(ctx context.Context, db *sql.DB) ([]Item, error) {
 	items := make([]Item, 0)
 
 	result, err := db.QueryContext(ctx, `SELECT id, name, price, image, amount, barcode FROM items`)
