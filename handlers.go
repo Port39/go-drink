@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
 	"encoding/hex"
-	"encoding/json"
 	"github.com/Port39/go-drink/items"
 	"github.com/Port39/go-drink/session"
 	"github.com/Port39/go-drink/transactions"
 	"github.com/Port39/go-drink/users"
 	"github.com/google/uuid"
-	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -18,101 +15,33 @@ import (
 	"time"
 )
 
-func addCorsHeader(next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if config.AddCorsHeader {
-			w.Header().Set("Access-Control-Allow-Origin", config.CorsWhitelist)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		}
-		next(w, r)
-	}
-}
-
-func enrichRequestContext(next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			next(w, r)
-			return
-		}
-
-		split := strings.Split(authHeader, " ")
-		if len(split) != 2 || split[0] != "Bearer" {
-			next(w, r)
-			return
-		}
-		next(w, r.Clone(context.WithValue(r.Context(), ContextKeySessionToken, split[1])))
-	}
-}
-
-func verifyRole(role string, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		sessionToken := r.Context().Value(ContextKeySessionToken)
-		if sessionToken == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		s, err := sessionStore.Get(sessionToken.(string))
-		if err != nil || !session.IsValid(&s) {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		if !users.CheckRole(s.Role, role) {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		next(w, r)
-	}
-}
-
 func getItems(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("content-type", "application/json")
-	aLlItems, err := items.GetALlItems(r.Context(), database)
+	allItems, err := items.GetAllItems(r.Context(), database)
+
 	if err != nil {
-		log.Println("Error while retrieving items from database:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("[]"))
+		logAndRespondWithInternalError(w, "Error while retrieving items from database:", err)
 		return
 	}
-	resp, err := json.Marshal(aLlItems)
-	if err != nil {
-		log.Println("Error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("[]"))
-		return
-	}
-	_, err = w.Write(resp)
+	respondWithJson(w, allItems)
 }
 
 func addItem(w http.ResponseWriter, r *http.Request) {
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*addItemRequest](r)
+
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
-	var req addItemRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	err = req.Validate()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+
+	req := *reqPointer
+
 	_, err = items.GetItemByName(r.Context(), req.Name, database)
-	if err == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Item already exists!"))
+
+	if err != nil {
+		respondBadRequest(w, "Item already exists!")
 		return
 	}
+
 	item := items.Item{
 		Name:    req.Name,
 		Price:   req.Price,
@@ -122,59 +51,29 @@ func addItem(w http.ResponseWriter, r *http.Request) {
 		Barcode: req.Barcode,
 	}
 	err = items.InsertNewItem(r.Context(), &item, database)
+
 	if err != nil {
-		log.Println("error inserting new Item:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "Error while inserting new item", err)
 		return
 	}
-	resp, err := json.Marshal(item)
-	if err != nil {
-		log.Println("Error creating response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
+
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write(resp)
+	respondWithJson(w, item)
 }
 
 func updateItem(w http.ResponseWriter, r *http.Request) {
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*updateItemRequest](r)
+
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
-	var req updateItemRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	err = req.Validate()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	err = req.Validate()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+
+	req := *reqPointer
+
 	item, err := items.GetItemByName(r.Context(), req.Name, database)
 	if err == nil && item.Id != req.Id {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("an item with this name already exits"))
+		respondBadRequest(w, "an item with this name already exits")
 		return
 	}
 	err = items.UpdateItem(r.Context(), &items.Item{
@@ -185,78 +84,46 @@ func updateItem(w http.ResponseWriter, r *http.Request) {
 		Id:      req.Id,
 		Barcode: req.Barcode,
 	}, database)
+
 	if err != nil {
-		log.Println("Error saving item:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "Error while updating item", err)
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
 func getUsers(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("content-type", "application/json")
 	allUsers, err := users.GetAllUsers(r.Context(), database)
 	if err != nil {
-		log.Println("Error while retrieving users from database:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("[]"))
+		logAndRespondWithInternalError(w, "Error while retrieving users from database:", err)
 		return
 	}
-	resp, err := json.Marshal(allUsers)
-	if err != nil {
-		log.Println("Error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("[]"))
-		return
-	}
-	_, err = w.Write(resp)
+	respondWithJson(w, allUsers)
 }
 
 func getUsersWithNoneAuth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("content-type", "application/json")
-	usernames, err := users.GetUsernamesWithNoneAuth(r.Context(), database)
+	userNames, err := users.GetUsernamesWithNoneAuth(r.Context(), database)
 	if err != nil {
-		log.Println("Error getting list of users with none auth:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("[]"))
+		logAndRespondWithInternalError(w, "Error getting list of users with none auth:", err)
 		return
 	}
-	data, err := json.Marshal(usernames)
-	if err != nil {
-		log.Println("Error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("[]"))
-		return
-	}
-	_, err = w.Write(data)
+	respondWithJson(w, userNames)
 }
 
 func registerWithPassword(w http.ResponseWriter, r *http.Request) {
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*passwordRegistrationRequest](r)
+
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
 
-	var req passwordRegistrationRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	err = req.Validate()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	req := *reqPointer
+
 	_, err = users.GetUserForUsername(r.Context(), req.Username, database)
 	if err == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("user already exists"))
+		respondBadRequest(w, "Username already taken")
 		return
 	}
 	user := users.User{
@@ -268,8 +135,7 @@ func registerWithPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	err = users.AddUser(r.Context(), user, database)
 	if err != nil {
-		log.Println("Error saving user:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "Error while adding user to database:", err)
 		return
 	}
 	auth := users.AuthenticationData{
@@ -279,8 +145,7 @@ func registerWithPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	err = users.AddAuthentication(r.Context(), auth, database)
 	if err != nil {
-		log.Println("Error saving auth:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "Error saving auth:", err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -289,35 +154,24 @@ func registerWithPassword(w http.ResponseWriter, r *http.Request) {
 func addAuthMethod(w http.ResponseWriter, r *http.Request) {
 	token := r.Context().Value(ContextKeySessionToken)
 	if token == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		respondUnauthorized(w)
 		return
 	}
 
 	sess, err := sessionStore.Get(token.(string))
 	if err != nil || sess.AuthBackend != "password" {
-		w.WriteHeader(http.StatusUnauthorized)
+		respondUnauthorized(w)
 		return
 	}
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*addAuthMethodRequest](r)
+
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
-	var req addAuthMethodRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	err = req.Validate()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+
+	req := *reqPointer
+
 	data, _ := hex.DecodeString(req.Data) // already checked in the validate function
 	auth := users.AuthenticationData{
 		User: sess.UserId,
@@ -326,156 +180,119 @@ func addAuthMethod(w http.ResponseWriter, r *http.Request) {
 	}
 	err = users.AddAuthentication(r.Context(), auth, database)
 	if err != nil {
-		log.Println("Error saving auth data", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "Error saving auth data:", err)
 		return
 	}
 }
 
 func loginWithPassword(w http.ResponseWriter, r *http.Request) {
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*passwordLoginRequest](r)
+
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
 
-	var req passwordLoginRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	req := *reqPointer
 	user, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
+		respondForbidden(w)
 		return
 	}
 	auth, err := users.GetAuthForUser(r.Context(), user.Id, "password", database)
+
+	if err != nil {
+		logAndRespondWithInternalError(w, "Could not get auth data", err)
+	}
+
 	if !users.VerifyPasswordHash(auth.Data, req.Password) {
-		w.WriteHeader(http.StatusForbidden)
+		respondForbidden(w)
 		return
 	}
 	sess := session.CreateSession(user.Id, user.Role, auth.Type, config.SessionLifetime)
-	resp, err := json.Marshal(loginResponse{
-		Token:      sess.Id,
-		ValidUntil: sess.NotValidAfter,
-	})
-	if err != nil {
-		log.Println("Error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	sessionStore.Store(sess)
-	w.Header().Set("content-type", "application/json")
-	_, err = w.Write(resp)
+	respondWithJson(w,
+		loginResponse{
+			Token:      sess.Id,
+			ValidUntil: sess.NotValidAfter,
+		})
 }
 
 func loginCash(w http.ResponseWriter, r *http.Request) {
 	user, err := users.GetUserForId(r.Context(), users.CASH_USER_ID, database)
 	if err != nil {
-		log.Println("error logging in with cash user:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "error logging in with cash user:", err)
 		return
 	}
 
 	sess := session.CreateSession(user.Id, "user", "cash", config.SessionLifetime)
-	resp, err := json.Marshal(loginResponse{
+	respondWithJson(w, loginResponse{
 		Token:      sess.Id,
 		ValidUntil: sess.NotValidAfter,
 	})
-	if err != nil {
-		log.Println("Error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	sessionStore.Store(sess)
-	w.Header().Set("content-type", "application/json")
-	_, err = w.Write(resp)
 }
 
 func loginNone(w http.ResponseWriter, r *http.Request) {
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*noneLoginRequest](r)
+
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
 
-	var req noneLoginRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	req := *reqPointer
+
 	user, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
+		respondForbidden(w)
 		return
 	}
 	auth, err := users.GetAuthForUser(r.Context(), user.Id, "none", database)
 
+	if err != nil {
+		logAndRespondWithInternalError(w, "Could not get auth data", err)
+	}
+
 	sess := session.CreateSession(user.Id, "user", auth.Type, config.SessionLifetime)
-	resp, err := json.Marshal(loginResponse{
+	sessionStore.Store(sess)
+	respondWithJson(w, loginResponse{
 		Token:      sess.Id,
 		ValidUntil: sess.NotValidAfter,
 	})
-	if err != nil {
-		log.Println("Error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	sessionStore.Store(sess)
-	w.Header().Set("content-type", "application/json")
-	_, err = w.Write(resp)
 }
 
 func loginNFC(w http.ResponseWriter, r *http.Request) {
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*nfcLoginRequest](r)
+
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
 
-	var req nfcLoginRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	req := *reqPointer
 	token, err := hex.DecodeString(req.Token)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		respondBadRequest(w, err.Error())
 		return
 	}
 	user, err := users.GetUserForNFCToken(r.Context(), token, database)
 	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
+		respondForbidden(w)
 		return
 	}
 	auth, err := users.GetAuthForUser(r.Context(), user.Id, "nfc", database)
 
+	if err != nil {
+		logAndRespondWithInternalError(w, "Could not get auth data", err)
+	}
+
 	sess := session.CreateSession(user.Id, "user", auth.Type, config.SessionLifetime)
-	resp, err := json.Marshal(loginResponse{
+	sessionStore.Store(sess)
+	respondWithJson(w, loginResponse{
 		Token:      sess.Id,
 		ValidUntil: sess.NotValidAfter,
 	})
-	if err != nil {
-		log.Println("Error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	sessionStore.Store(sess)
-	w.Header().Set("content-type", "application/json")
-	_, err = w.Write(resp)
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
@@ -491,34 +308,22 @@ func logout(w http.ResponseWriter, r *http.Request) {
 func buyItem(w http.ResponseWriter, r *http.Request) {
 	sessionToken := r.Context().Value(ContextKeySessionToken)
 	if sessionToken == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		respondUnauthorized(w)
 		return
 	}
 	s, err := sessionStore.Get(sessionToken.(string))
 	if err != nil || !session.IsValid(&s) {
-		w.WriteHeader(http.StatusUnauthorized)
+		respondUnauthorized(w)
 		return
 	}
 
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*buyItemRequest](r)
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
-	var req buyItemRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	if err = req.Validate(); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	req := *reqPointer
+
 	item, err := items.GetItemById(r.Context(), req.ItemId, database)
 	if err != nil {
 		log.Println("error getting item:", err)
@@ -528,21 +333,18 @@ func buyItem(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := users.GetUserForId(r.Context(), s.UserId, database)
 	if err != nil {
-		log.Println("error getting user from session:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "error getting user from session:", err)
 		return
 	}
 	err = transactions.MakeTransaction(r.Context(), &user, &item, req.Amount, s.AuthBackend, database)
 	if err != nil {
 		log.Println("error while performing transaction", err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		respondBadRequest(w, err.Error())
 		return
 	}
 }
 
 func getTransactions(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("content-type", "application/json")
 	since := int64(0)
 	until := time.Now().Unix()
 	if r.URL.Query().Has("since") {
@@ -553,27 +355,18 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	transac, err := transactions.GetTransactionsSince(r.Context(), since, until, database)
 	if err != nil {
-		log.Println("error while retrieving all transactions:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("[]"))
+		logAndRespondWithInternalError(w, "error while retrieving all transactions:", err)
 		return
 	}
-	resp, err := json.Marshal(transac)
-	if err != nil {
-		log.Println("error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("[]"))
-		return
-	}
-	_, err = w.Write(resp)
+
+	respondWithJson(w, transac)
 }
 
 func getItem(w http.ResponseWriter, r *http.Request) {
 	idString := strings.TrimPrefix(r.URL.Path, "/items/")
 	id, err := uuid.Parse(idString)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("invalid item id, uuid expected"))
+		respondBadRequest(w, "invalid item id, uuid expected")
 		return
 	}
 	item, err := items.GetItemById(r.Context(), id.String(), database)
@@ -581,20 +374,13 @@ func getItem(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	resp, err := json.Marshal(item)
-	if err != nil {
-		log.Println("error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	_, err = w.Write(resp)
+	respondWithJson(w, item)
 }
 
 func getItemByBarcode(w http.ResponseWriter, r *http.Request) {
 	barcodeString := strings.TrimPrefix(r.URL.Path, "/items/barcode/")
 	if !regexp.MustCompile("^[0-9]+$").MatchString(barcodeString) {
-		w.WriteHeader(http.StatusBadRequest)
+		respondBadRequest(w, "invalid item barcode")
 		return
 	}
 	item, err := items.GetItemByBarcode(r.Context(), barcodeString, database)
@@ -603,22 +389,14 @@ func getItemByBarcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := json.Marshal(item)
-	if err != nil {
-		log.Println("error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	_, err = w.Write(resp)
+	respondWithJson(w, item)
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) {
 	idString := strings.TrimPrefix(r.URL.Path, "/users/")
 	id, err := uuid.Parse(idString)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("invalid user id, uuid expected"))
+		respondBadRequest(w, "invalid user id, uuid expected")
 		return
 	}
 	user, err := users.GetUserForId(r.Context(), id.String(), database)
@@ -626,83 +404,54 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	resp, err := json.Marshal(user)
-	if err != nil {
-		log.Println("error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	_, err = w.Write(resp)
+	respondWithJson(w, user)
 }
 
 func changeCredit(w http.ResponseWriter, r *http.Request) {
 	token := r.Context().Value(ContextKeySessionToken)
 	if token == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		respondUnauthorized(w)
 		return
 	}
 	sess, err := sessionStore.Get(token.(string))
 	if err != nil || sess.AuthBackend != "password" {
-		w.WriteHeader(http.StatusUnauthorized)
+		respondUnauthorized(w)
 		return
 	}
 	user, err := users.GetUserForId(r.Context(), sess.UserId, database)
 	if err != nil {
-		log.Println("Error getting user:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "Error getting user:", err)
 		return
 	}
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*changeCreditRequest](r)
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
-	var req changeCreditRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	req := *reqPointer
+
 	if user.Credit+req.Diff < 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("lending money is not allowed"))
+		respondBadRequest(w, "lending money is not allowed")
 		return
 	}
 	user.Credit += req.Diff
 	err = users.UpdateUser(r.Context(), &user, database)
 	if err != nil {
-		log.Println("Error updating user in database:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logAndRespondWithInternalError(w, "Error updating user in database:", err)
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 	return
 }
 
 func requestPasswordReset(w http.ResponseWriter, r *http.Request) {
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*requestPasswordResetRequest](r)
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
-	var req requestPasswordResetRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	if err = req.Validate(); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	req := *reqPointer
 
 	// doing things async, so response timing is not affected by the process.
 	go func() {
@@ -716,30 +465,16 @@ func requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 }
 
 func resetPassword(w http.ResponseWriter, r *http.Request) {
-	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	reqPointer, err := readValidJsonBody[*resetPasswordRequest](r)
 	if err != nil {
-		log.Println("Error reading body:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondBadRequest(w, err.Error())
 		return
 	}
-	var req resetPasswordRequest
-	err = json.Unmarshal(rawBody, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	if err = req.Validate(); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	req := *reqPointer
 	err = users.ResetPassword(r.Context(), req.Token, req.Password, database)
 	if err != nil {
-		log.Println("Error resetting password: ", err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		log.Println(w, "Error resetting password:", err)
+		respondBadRequest(w, "Error resetting password")
 		return
 	}
 	w.WriteHeader(http.StatusCreated)

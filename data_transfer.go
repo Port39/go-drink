@@ -30,13 +30,25 @@ func (p *passwordRegistrationRequest) Validate() error {
 	return validatePassword(p.Password)
 }
 
+func (p *passwordLoginRequest) Validate() error {
+	return nil
+}
+
 type passwordLoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
+func (p *noneLoginRequest) Validate() error {
+	return nil
+}
+
 type noneLoginRequest struct {
 	Username string `json:"username"`
+}
+
+func (p *nfcLoginRequest) Validate() error {
+	return nil
 }
 
 type nfcLoginRequest struct {
@@ -142,6 +154,10 @@ func (r *addAuthMethodRequest) Validate() error {
 		return nil
 	}
 	return errors.New("invalid method")
+}
+
+func (r *changeCreditRequest) Validate() error {
+	return nil
 }
 
 type changeCreditRequest struct {
