@@ -60,7 +60,7 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
-    -*|--*)
+    -*)
       echo "Unknown option $1"
       echo "$__usage"
       exit 1
@@ -74,7 +74,7 @@ done
 
 [[ -n "$HELP" ]] && echo "$__usage" && exit 0
 
-if [ ! -f $ENV_FILE ]; then
+if [ ! -f "$ENV_FILE" ]; then
     echo "Environment file not found"
     echo "$__usage"
     exit 1
@@ -82,15 +82,15 @@ fi
 
 set +e
 while
-(exec 6<>/dev/tcp/$GODRINK_HOST/$GODRINK_PORT) 2>/dev/null
+(exec 6<>/dev/tcp/"$GODRINK_HOST"/"$GODRINK_PORT") 2>/dev/null
 [ $? == 1 ]
 do echo Waiting for Go Drink; sleep 1; done
 set -e
 
-docker run --network="host" --rm -v $PWD:/workdir \
+docker run --network="host" --rm -v "$PWD":/workdir \
        jetbrains/intellij-http-client \
        --env "$ENV_NAME" \
        --env-file "$ENV_FILE" \
        --env-variables "godrink_url=$GODRINK_HOST:$GODRINK_PORT" \
-       --report $OUTPUT \
+       --report "$OUTPUT" \
         $TEST_GLOB
