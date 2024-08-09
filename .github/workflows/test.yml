@@ -29,7 +29,7 @@ jobs:
           GODRINK_DB: postgresql://godrink:changeme@localhost:5432/godrink?sslmode=disable
         run: "go run . &"
       - name: Execute HTTP requests
-        run: ./http-test/test.sh
+        run: ./http-test/test.sh -t '**/*.http' -r test-reports -e http-test/http-client.env.json
         timeout-minutes: 3
       - name: Upload Test results
         if: success() || failure() # always run even if the previous step fails
