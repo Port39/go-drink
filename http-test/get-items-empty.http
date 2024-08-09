@@ -1,0 +1,19 @@
+GET {{godrink_url}}/items
+
+> {%
+    client.test("returns 200", () => {
+        client.assert(response.status === 200)
+    })
+
+    client.test("returns json", () => {
+        client.assert(response.contentType.mimeType === "application/json")
+    })
+
+    client.test("returns utf-8", () => {
+        client.assert(response.contentType.charset === "utf-8" || response.contentType.charset.length === 0)
+    })
+
+    client.test("returns empty array", () => {
+        client.assert(response.body.length === 0)
+    })
+%}
