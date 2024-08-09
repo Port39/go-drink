@@ -1,6 +1,4 @@
-FROM golang:1.22-alpine AS builder
-
-RUN apk add --no-cache build-base
+FROM golang:1.22 AS builder
 
 RUN mkdir "/go-drink"
 WORKDIR /go-drink
@@ -13,13 +11,11 @@ COPY session/*.go /go-drink/session/
 COPY transactions/*.go /go-drink/transactions/
 COPY users/*.go /go-drink/users/
 
-RUN CGO_ENABLED=1 go build -ldflags "-s -w" -trimpath -o /dist/go-drink
-RUN ldd /dist/go-drink | tr -s [:blank:] '\n' | grep ^/ | xargs -I % install -D % /dist/%
-RUN ln -s ld-musl-x86_64.so.1 /dist/lib/libc.musl-x86_64.so.1
+RUN CGO_ENABLED=0 go build -ldflags "-s -w" -o go-drink
 
 FROM scratch
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=builder /dist /
+COPY --from=builder /go-drink/go-drink /go-drink
 
 ENTRYPOINT ["/go-drink"]
