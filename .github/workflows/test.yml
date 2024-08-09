@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - "README.md"
       - ".gitignore"
+      - "Dockerfile"
       - "docker-compose.yaml"
       - "docker-compose.dev.yaml"
       - "openapi.yaml"
