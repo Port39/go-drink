@@ -3,6 +3,13 @@ on:
   push:
     branches:
       - "*"
+    paths-ignore:
+      - "README.md"
+      - ".gitignore"
+      - "docker-compose.yaml"
+      - "docker-compose.dev.yaml"
+      - "openapi.yaml"
+      - ".run"
 jobs:
   HTTP-Tests:
     runs-on: ubuntu-latest
