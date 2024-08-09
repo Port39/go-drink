@@ -12,6 +12,7 @@ services:
     image: ghcr.io/port39/go-drink:latest
     restart: on-failure
     environment:
+      GODRINK_DBDRIVER: "postgres"
       GODRINK_DB: "postgresql://godrink:changeme@db:5432/godrink?sslmode=disable"
       GODRINK_SMTPHOST: "yourmailhost.example:465"
       GODRINK_SMTPUSER: "godrink@yourmailhost.example"
