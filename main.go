@@ -10,6 +10,7 @@ import (
 	"github.com/Port39/go-drink/transactions"
 	"github.com/Port39/go-drink/users"
 	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ import (
 const ContextKeySessionToken = "SESSION_TOKEN"
 
 type Config struct {
+	DbDriver           string
 	DbConnectionString string
 	Port               int
 	SessionLifetime    int
@@ -49,10 +51,23 @@ func mkconf() Config {
 		}
 	}
 
-	dbstring, exists := os.LookupEnv("GODRINK_DB")
-	if !exists {
-		log.Fatal("No database given, exiting!")
+	dbdriver, driverExists := os.LookupEnv("GODRINK_DBDRIVER")
+	dbstring, connExists := os.LookupEnv("GODRINK_DB")
+	if !driverExists {
+		log.Println("No database driver given, using embedded sqlite.")
+		dbdriver = "sqlite3"
+		dbstring = "file::memory:?cache=shared"
+	} else {
+		dbdriver = strings.ToLower(dbdriver)
+		if !connExists {
+			if dbdriver == "sqlite3" {
+				dbstring = "file::memory:?cache=shared"
+			} else {
+				log.Fatalf("The database driver (%s) requires specifying a connection string!", dbdriver)
+			}
+		}
 	}
+
 	lifetime := 300
 	lifetimeString, exists := os.LookupEnv("GODRINK_SESSIONLIFETIME")
 	if exists {
@@ -94,6 +109,7 @@ func mkconf() Config {
 	cors, addCorsHeader := os.LookupEnv("GODRINK_CORS")
 
 	return Config{
+		DbDriver:           dbdriver,
 		DbConnectionString: dbstring,
 		Port:               port,
 		SessionLifetime:    lifetime,
@@ -109,7 +125,7 @@ func mkconf() Config {
 
 func initialize() {
 	config = mkconf()
-	db, err := sql.Open("postgres", config.DbConnectionString)
+	db, err := sql.Open(config.DbDriver, config.DbConnectionString)
 	if err != nil {
 		log.Fatal("Error connecting to database: ", err)
 	}
