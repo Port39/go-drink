@@ -20,14 +20,14 @@ This backend depends on several other services, that should be configured alongs
 strictly required, but some functions might not work if a service is configured improperly. 
 
 ### Database
-go-drink can either be used with Postgresql as a database backend, or sqlite3. If no database backend is configured, an 
-in-memory sqlite3 database is used. However, if a backend is configured, but it is unreachable during the application 
+go-drink can either be used with Postgresql as a database backend, or sqlite. If no database backend is configured, an 
+in-memory sqlite database is used. However, if a backend is configured, but it is unreachable during the application 
 startup, go-drink terminates instantly.
 
-| Environment Variable | Example Value                                                   | Notes                                                               |
-|----------------------|-----------------------------------------------------------------|---------------------------------------------------------------------|
-| GODRINK_DBDRIVER     | `postgres`                                                      | The database backend to use. May either be `postgres` or `sqlite3`. | 
-| GODRINK_DB           | `postgresql://godrink:changeme@db:5432/godrink?sslmode=disable` | A connection string describing of the database can be reached       | 
+| Environment Variable | Example Value                                                   | Notes                                                              |
+|----------------------|-----------------------------------------------------------------|--------------------------------------------------------------------|
+| GODRINK_DBDRIVER     | `postgres`                                                      | The database backend to use. May either be `postgres` or `sqlite`. | 
+| GODRINK_DB           | `postgresql://godrink:changeme@db:5432/godrink?sslmode=disable` | A connection string describing of the database can be reached      | 
 
 ### SMTP / Mailing
 An SMTP server can be configured, so that the application can send out emails to users, for example if a password reset 

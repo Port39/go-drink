@@ -10,9 +10,8 @@ import (
 	"github.com/Port39/go-drink/transactions"
 	"github.com/Port39/go-drink/users"
 	_ "github.com/lib/pq"
-	_ "github.com/ncruces/go-sqlite3/driver"
-	_ "github.com/ncruces/go-sqlite3/embed"
 	"log"
+	_ "modernc.org/sqlite"
 	"net/http"
 	"os"
 	"strconv"
@@ -22,8 +21,8 @@ import (
 
 const ContextKeySessionToken = "SESSION_TOKEN"
 
-// The SQLITE_DRIVER value comes from github.com/ncruces/go-sqlite3/driver.driverName
-const SQLITE_DRIVER = "sqlite3"
+// The SQLITE_DRIVER value comes from modernc.org/sqlite/sqlite.driverName
+const SQLITE_DRIVER = "sqlite"
 
 type Config struct {
 	DbDriver           string
@@ -59,6 +58,9 @@ func mkconf() Config {
 	dbUrl, dbUrlExists := os.LookupEnv("GODRINK_DB")
 	if !driverExists {
 		log.Println("No database driver given, using embedded sqlite.")
+		log.Println("##############################################################")
+		log.Println("# Caution: NO DATA WILL PERSIST ACROSS APPLICATION RESTARTS! #")
+		log.Println("##############################################################")
 		dbdriver = SQLITE_DRIVER
 		dbUrl = "file::memory:?cache=shared"
 	} else {
