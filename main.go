@@ -11,6 +11,7 @@ import (
 	"github.com/Port39/go-drink/users"
 	_ "github.com/lib/pq"
 	"log"
+	_ "modernc.org/sqlite"
 	"net/http"
 	"os"
 	"strconv"
@@ -20,7 +21,11 @@ import (
 
 const ContextKeySessionToken = "SESSION_TOKEN"
 
+// The SQLITE_DRIVER value comes from modernc.org/sqlite/sqlite.driverName
+const SQLITE_DRIVER = "sqlite"
+
 type Config struct {
+	DbDriver           string
 	DbConnectionString string
 	Port               int
 	SessionLifetime    int
@@ -49,10 +54,26 @@ func mkconf() Config {
 		}
 	}
 
-	dbstring, exists := os.LookupEnv("GODRINK_DB")
-	if !exists {
-		log.Fatal("No database given, exiting!")
+	dbdriver, driverExists := os.LookupEnv("GODRINK_DBDRIVER")
+	dbUrl, dbUrlExists := os.LookupEnv("GODRINK_DB")
+	if !driverExists {
+		log.Println("No database driver given, using embedded sqlite.")
+		log.Println("##############################################################")
+		log.Println("# Caution: NO DATA WILL PERSIST ACROSS APPLICATION RESTARTS! #")
+		log.Println("##############################################################")
+		dbdriver = SQLITE_DRIVER
+		dbUrl = "file::memory:?cache=shared"
+	} else {
+		dbdriver = strings.ToLower(dbdriver)
+		if !dbUrlExists {
+			if dbdriver == SQLITE_DRIVER {
+				dbUrl = "file::memory:?cache=shared"
+			} else {
+				log.Fatalf("The database driver (%s) requires specifying a connection string!", dbdriver)
+			}
+		}
 	}
+
 	lifetime := 300
 	lifetimeString, exists := os.LookupEnv("GODRINK_SESSIONLIFETIME")
 	if exists {
@@ -94,7 +115,8 @@ func mkconf() Config {
 	cors, addCorsHeader := os.LookupEnv("GODRINK_CORS")
 
 	return Config{
-		DbConnectionString: dbstring,
+		DbDriver:           dbdriver,
+		DbConnectionString: dbUrl,
 		Port:               port,
 		SessionLifetime:    lifetime,
 		MailHost:           mailHost,
@@ -109,7 +131,7 @@ func mkconf() Config {
 
 func initialize() {
 	config = mkconf()
-	db, err := sql.Open("postgres", config.DbConnectionString)
+	db, err := sql.Open(config.DbDriver, config.DbConnectionString)
 	if err != nil {
 		log.Fatal("Error connecting to database: ", err)
 	}

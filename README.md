@@ -19,13 +19,15 @@ interact with the system:
 This backend depends on several other services, that should be configured alongside with this application. Not all are 
 strictly required, but some functions might not work if a service is configured improperly. 
 
-### Postgres
-go-drink uses Postgresql as a database backend and fully depends on it. If a database backend is not configured, or if 
-it is unreachable during the application startup, go-drink terminates instantly.
+### Database
+go-drink can either be used with Postgresql as a database backend, or sqlite. If no database backend is configured, an 
+in-memory sqlite database is used. However, if a backend is configured, but it is unreachable during the application 
+startup, go-drink terminates instantly.
 
-| Environment Variable | Example Value                                                   | Notes                                                         |
-|----------------------|-----------------------------------------------------------------|---------------------------------------------------------------|
-| GODRINK_DB           | `postgresql://godrink:changeme@db:5432/godrink?sslmode=disable` | A connection string describing of the database can be reached | 
+| Environment Variable | Example Value                                                   | Notes                                                              |
+|----------------------|-----------------------------------------------------------------|--------------------------------------------------------------------|
+| GODRINK_DBDRIVER     | `postgres`                                                      | The database backend to use. May either be `postgres` or `sqlite`. | 
+| GODRINK_DB           | `postgresql://godrink:changeme@db:5432/godrink?sslmode=disable` | A connection string describing of the database can be reached      | 
 
 ### SMTP / Mailing
 An SMTP server can be configured, so that the application can send out emails to users, for example if a password reset 
