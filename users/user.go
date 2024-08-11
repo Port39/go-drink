@@ -124,7 +124,6 @@ func GetUserForUsername(ctx context.Context, username string, db *sql.DB) (User,
 
 func GetUserForNFCToken(ctx context.Context, token []byte, db *sql.DB) (User, error) {
 	result, err := db.QueryContext(ctx, `SELECT user_id FROM auth WHERE type = 'nfc' AND data = $1`, token)
-	defer result.Close()
 	if err != nil {
 		return User{}, err
 	}
@@ -133,6 +132,10 @@ func GetUserForNFCToken(ctx context.Context, token []byte, db *sql.DB) (User, er
 	}
 	var userId string
 	err = result.Scan(&userId)
+	if err != nil {
+		return User{}, err
+	}
+	err = result.Close()
 	if err != nil {
 		return User{}, err
 	}
