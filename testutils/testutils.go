@@ -13,11 +13,14 @@ func GetEmptyDb(t *testing.T) *sql.DB {
 	return db
 }
 
+func ExpectError(err error, t *testing.T) {
+	t.Helper()
+	ExpectSuccess(err != nil, t)
+}
+
 func FailOnError(err error, t *testing.T) {
 	t.Helper()
-	if err != nil {
-		t.Fatal(err)
-	}
+	ExpectSuccess(err == nil, t)
 }
 
 func ExpectFailure(cond bool, t *testing.T) {
