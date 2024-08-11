@@ -29,6 +29,33 @@ var testUser2 = User{
 	Credit:   9001,
 }
 
+func TestAuthenticationData_Equals(t *testing.T) {
+	testData1 := AuthenticationData{
+		User: "test",
+		Type: "none",
+		Data: []byte{0x13, 0x37},
+	}
+	testData2 := testData1
+	testutils.ExpectSuccess(testData1.Equals(&testData2), t)
+
+	testData2.Data = []byte{0x13, 0x38}
+	testutils.ExpectFailure(testData1.Equals(&testData2), t)
+
+	testData2.Data = []byte{0x42}
+	testutils.ExpectFailure(testData1.Equals(&testData2), t)
+
+	testData2.Data = []byte{0x13, 0x37}
+	testData2.Type = "nfc"
+	testutils.ExpectFailure(testData1.Equals(&testData2), t)
+
+	testData2.User = "Another"
+	testData2.Type = "none"
+	testutils.ExpectFailure(testData1.Equals(&testData2), t)
+
+	testData2.User = "test"
+	testutils.ExpectSuccess(testData1.Equals(&testData2), t)
+}
+
 func TestPassword(t *testing.T) {
 	pass := "password"
 	hash := CalculatePasswordHash(pass)
@@ -129,6 +156,106 @@ func TestGetUserForNFCToken(t *testing.T) {
 	retrievedUser, err := GetUserForNFCToken(context.Background(), testUser1NFCAuth.Data, db)
 	testutils.FailOnError(err, t)
 	testutils.ExpectSuccess(retrievedUser == testUser1, t)
+}
+
+func TestGetUsernamesWithNoneAuth(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+
+	testutils.FailOnError(VerifyUsersTableExists(db), t)
+	testutils.FailOnError(VerifyAuthTableExists(db), t)
+	testutils.FailOnError(AddUser(context.Background(), testUser1, db), t)
+
+	usernames, err := GetUsernamesWithNoneAuth(context.Background(), db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(len(usernames) == 0, t)
+
+	testutils.FailOnError(AddAuthentication(context.Background(), AuthenticationData{
+		User: testUser1.Id,
+		Type: "none",
+		Data: nil,
+	}, db), t)
+
+	usernames, err = GetUsernamesWithNoneAuth(context.Background(), db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(len(usernames) == 1, t)
+	testutils.ExpectSuccess(usernames[0] == testUser1.Username, t)
+}
+
+func TestAddAuthenticationWithTransaction(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+
+	testutils.FailOnError(VerifyUsersTableExists(db), t)
+	testutils.FailOnError(VerifyAuthTableExists(db), t)
+	testutils.FailOnError(AddUser(context.Background(), testUser1, db), t)
+
+	tx, err := db.Begin()
+	testutils.FailOnError(err, t)
+	testutils.FailOnError(AddAuthenticationWithTransaction(context.Background(), testUser1NFCAuth, tx), t)
+	testutils.FailOnError(tx.Rollback(), t)
+
+	// since the transaction was canceled, this should not return auth data
+	_, err = GetUserForNFCToken(context.Background(), testUser1NFCAuth.Data, db)
+	testutils.ExpectError(err, t)
+
+	tx, err = db.Begin()
+	testutils.FailOnError(err, t)
+	testutils.FailOnError(AddAuthenticationWithTransaction(context.Background(), testUser1NFCAuth, tx), t)
+	testutils.FailOnError(tx.Commit(), t)
+
+	// now it should succeed
+	retrievedUser, err := GetUserForNFCToken(context.Background(), testUser1NFCAuth.Data, db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(retrievedUser == testUser1, t)
+}
+
+func TestGetAuthForUser(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+
+	testutils.FailOnError(VerifyAuthTableExists(db), t)
+
+	_, err := GetAuthForUser(context.Background(), testUser1NFCAuth.User, testUser1NFCAuth.Type, db)
+	testutils.ExpectError(err, t)
+
+	testutils.FailOnError(AddAuthentication(context.Background(), testUser1NFCAuth, db), t)
+
+	retrievedData, err := GetAuthForUser(context.Background(), testUser1NFCAuth.User, testUser1NFCAuth.Type, db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(retrievedData.Equals(&testUser1NFCAuth), t)
+
+	_, err = GetAuthForUser(context.Background(), testUser1NFCAuth.User, "none", db)
+	testutils.ExpectError(err, t)
+	_, err = GetAuthForUser(context.Background(), testUser1NFCAuth.User, "password", db)
+	testutils.ExpectError(err, t)
+}
+
+func TestUpdateUser(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+
+	testutils.FailOnError(VerifyUsersTableExists(db), t)
+	testutils.FailOnError(AddUser(context.Background(), testUser1, db), t)
+
+	newUsername := "UpdatedUsername"
+	testUser1.Username = newUsername
+	testutils.FailOnError(UpdateUser(context.Background(), &testUser1, db), t)
+
+	retrievedUser, err := GetUserForId(context.Background(), testUser1.Id, db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(retrievedUser.Username == newUsername, t)
+
+	newBalance := 65535
+	testUser1.Credit = newBalance
+	tx, err := db.Begin()
+	testutils.FailOnError(err, t)
+	testutils.FailOnError(UpdateUserWithTransaction(context.Background(), &testUser1, tx), t)
+	testutils.FailOnError(tx.Rollback(), t)
+
+	retrievedUser, err = GetUserForId(context.Background(), testUser1.Id, db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectFailure(retrievedUser.Credit == newBalance, t)
 }
 
 func TestCheckRole(t *testing.T) {

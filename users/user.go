@@ -34,6 +34,24 @@ type AuthenticationData struct {
 	Data []byte
 }
 
+func (one *AuthenticationData) Equals(another *AuthenticationData) bool {
+	if one.User != another.User {
+		return false
+	}
+	if one.Type != another.Type {
+		return false
+	}
+	if len(one.Data) != len(another.Data) {
+		return false
+	}
+	for i, d := range one.Data {
+		if another.Data[i] != d {
+			return false
+		}
+	}
+	return true
+}
+
 type PasswordResetToken struct {
 	UserId     string
 	Token      string
@@ -281,7 +299,7 @@ func ResetPassword(ctx context.Context, token string, password string, db *sql.D
 		Type: "password",
 		Data: CalculatePasswordHash(password),
 	}
-	tr, err := db.Begin()
+	tr, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
