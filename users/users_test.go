@@ -2,8 +2,13 @@ package users
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"github.com/Port39/go-drink/testutils"
+	"github.com/google/uuid"
+	"strings"
 	"testing"
+	"time"
 )
 
 var testUser1 = User{
@@ -20,12 +25,32 @@ var testUser1NFCAuth = AuthenticationData{
 	Data: []byte{0xde, 0xad, 0xbe, 0xef},
 }
 
+var testUser1PasswordAuth = AuthenticationData{
+	User: testUser1.Id,
+	Type: "password",
+	Data: CalculatePasswordHash("password"),
+}
+
 var testUser2 = User{
 	Id:       "00000000-0000-0000-0000-000000000002",
 	Username: "test2",
 	Email:    "test2@godrink.test",
 	Role:     "user",
 	Credit:   9001,
+}
+
+// mimics addPasswordResetToken, but the actual token is outdated and therefore invalid
+func insertOutdatedPasswordResetToken(ctx context.Context, user *User, db *sql.DB) (PasswordResetToken, error) {
+	var token PasswordResetToken
+	token.UserId = user.Id
+	token.Token = uuid.New().String()
+	token.ValidUntil = time.Now().Add(-24 * time.Hour).Unix()
+	_, err := db.ExecContext(ctx, `INSERT INTO password_reset (user_id, token, valid_until) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET token = $2, valid_until = $3`,
+		token.UserId, token.Token, token.ValidUntil)
+	if err != nil {
+		return PasswordResetToken{}, err
+	}
+	return token, nil
 }
 
 func TestAuthenticationData_Equals(t *testing.T) {
@@ -286,4 +311,171 @@ func TestCheckRole(t *testing.T) {
 	testutils.ExpectFailure(CheckRole("user", "doesnotexist"), t)
 	testutils.ExpectFailure(CheckRole("doesnotexist", "admin"), t)
 	testutils.ExpectFailure(CheckRole("doesnotexist", "user"), t)
+}
+
+func TestAddPasswordResetToken(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+	ctx, cancel := testutils.GetTestingContext(t)
+	defer cancel()
+
+	testutils.FailOnError(VerifyPasswordResetTableExists(db), t)
+
+	token, err := addPasswordResetToken(ctx, &testUser1, db)
+	testutils.FailOnError(err, t)
+
+	// the token should have a lifetime of 24 hours (minus 30 seconds tolerance)
+	testutils.ExpectSuccess((86400 >= (token.ValidUntil-time.Now().Unix())) &&
+		((token.ValidUntil-time.Now().Unix()) > 86370), t)
+	testutils.ExpectSuccess(token.UserId == testUser1.Id, t)
+
+	retrievedToken, err := getPasswordResetDataByToken(ctx, token.Token, db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(retrievedToken == token, t)
+
+	// adding a new token for a user must replace the old one
+	anotherToken, err := addPasswordResetToken(ctx, &testUser1, db)
+	testutils.FailOnError(err, t)
+
+	_, err = getPasswordResetDataByToken(ctx, token.Token, db)
+	testutils.ExpectError(err, t)
+
+	// the new token should still work though
+	retrievedToken, err = getPasswordResetDataByToken(ctx, anotherToken.Token, db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(retrievedToken == anotherToken, t)
+}
+
+func TestSendPasswordResetMail(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+	ctx, cancel := testutils.GetTestingContext(t)
+	defer cancel()
+
+	testutils.FailOnError(VerifyUsersTableExists(db), t)
+	testutils.FailOnError(VerifyCashUserExists(db), t)
+	testutils.FailOnError(VerifyPasswordResetTableExists(db), t)
+
+	cashuser, err := GetUserForId(ctx, CASH_USER_ID, db)
+	testutils.FailOnError(err, t)
+
+	err = SendPasswordResetMail(cashuser.Username, db)
+	// Sending password reset mails for the cash user should always fail silently.
+	testutils.FailOnError(err, t)
+
+	testutils.FailOnError(AddUser(ctx, testUser1, db), t)
+	err = SendPasswordResetMail(testUser1.Username, db)
+	// since mailing is not set up, this should fail
+	testutils.ExpectSuccess(strings.Contains(err.Error(), "mail: no address"), t)
+}
+
+func TestResetPassword(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+	ctx, cancel := testutils.GetTestingContext(t)
+	defer cancel()
+
+	testutils.FailOnError(VerifyUsersTableExists(db), t)
+	testutils.FailOnError(VerifyAuthTableExists(db), t)
+	testutils.FailOnError(VerifyPasswordResetTableExists(db), t)
+
+	testutils.FailOnError(AddUser(ctx, testUser1, db), t)
+	testutils.FailOnError(AddAuthentication(ctx, testUser1PasswordAuth, db), t)
+
+	invalidToken, err := insertOutdatedPasswordResetToken(ctx, &testUser1, db)
+	testutils.FailOnError(err, t)
+	err = ResetPassword(ctx, invalidToken.Token, "shouldn't work anyways", db)
+	testutils.ExpectError(err, t)
+	testutils.ExpectSuccess(err.Error() == "token expired", t)
+
+	token, err := addPasswordResetToken(ctx, &testUser1, db)
+	testutils.FailOnError(err, t)
+
+	err = ResetPassword(ctx, token.Token, "changed", db)
+	testutils.FailOnError(err, t)
+
+	retrievedAuthData, err := GetAuthForUser(ctx, testUser1.Id, "password", db)
+	testutils.FailOnError(err, t)
+
+	testutils.ExpectFailure(VerifyPasswordHash(retrievedAuthData.Data, "password"), t)
+	testutils.ExpectSuccess(VerifyPasswordHash(retrievedAuthData.Data, "changed"), t)
+}
+
+func TestDeleteResetToken(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+	ctx, cancel := testutils.GetTestingContext(t)
+	defer cancel()
+
+	testutils.FailOnError(VerifyPasswordResetTableExists(db), t)
+
+	token, err := addPasswordResetToken(ctx, &testUser1, db)
+	testutils.FailOnError(err, t)
+
+	testutils.FailOnError(DeleteResetToken(ctx, token.Token, db), t)
+
+	_, err = getPasswordResetDataByToken(ctx, token.Token, db)
+	testutils.ExpectError(err, t)
+}
+
+func TestDeleteResetTokenWithTransaction(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+	ctx, cancel := testutils.GetTestingContext(t)
+	defer cancel()
+
+	testutils.FailOnError(VerifyPasswordResetTableExists(db), t)
+
+	token, err := addPasswordResetToken(ctx, &testUser1, db)
+	testutils.FailOnError(err, t)
+
+	// Delete it, but rollback transaction
+	tx, err := db.BeginTx(ctx, nil)
+	testutils.FailOnError(err, t)
+
+	err = DeleteResetTokenWithTransaction(ctx, token.Token, tx)
+	testutils.FailOnError(err, t)
+
+	err = tx.Rollback()
+	testutils.FailOnError(err, t)
+
+	retrievedToken, err := getPasswordResetDataByToken(ctx, token.Token, db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(retrievedToken == token, t)
+
+	// Now delete it for real
+	tx, err = db.BeginTx(ctx, nil)
+	testutils.FailOnError(err, t)
+
+	err = DeleteResetTokenWithTransaction(ctx, token.Token, tx)
+	testutils.FailOnError(err, t)
+
+	err = tx.Commit()
+	testutils.FailOnError(err, t)
+
+	_, err = getPasswordResetDataByToken(ctx, token.Token, db)
+	testutils.ExpectError(err, t)
+}
+
+func TestCleanExpiredResetTokens(t *testing.T) {
+	db := testutils.GetEmptyDb(t)
+	defer func() { testutils.FailOnError(db.Close(), t) }()
+	ctx, cancel := testutils.GetTestingContext(t)
+	defer cancel()
+
+	testutils.FailOnError(VerifyPasswordResetTableExists(db), t)
+
+	invalidToken, err := insertOutdatedPasswordResetToken(ctx, &testUser1, db)
+	testutils.FailOnError(err, t)
+	validToken, err := addPasswordResetToken(ctx, &testUser2, db)
+	testutils.FailOnError(err, t)
+
+	testutils.FailOnError(CleanExpiredResetTokens(ctx, db), t)
+
+	_, err = getPasswordResetDataByToken(ctx, invalidToken.Token, db)
+	testutils.ExpectError(err, t)
+
+	retrievedToken, err := getPasswordResetDataByToken(ctx, validToken.Token, db)
+	testutils.FailOnError(err, t)
+	testutils.ExpectSuccess(retrievedToken == validToken, t)
 }
