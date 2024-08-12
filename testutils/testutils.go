@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"database/sql"
 	_ "modernc.org/sqlite"
 	"testing"
@@ -20,7 +21,9 @@ func ExpectError(err error, t *testing.T) {
 
 func FailOnError(err error, t *testing.T) {
 	t.Helper()
-	ExpectSuccess(err == nil, t)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func ExpectFailure(cond bool, t *testing.T) {
@@ -33,4 +36,12 @@ func ExpectFailure(cond bool, t *testing.T) {
 func ExpectSuccess(cond bool, t *testing.T) {
 	t.Helper()
 	ExpectFailure(!cond, t)
+}
+
+func GetTestingContext(t *testing.T) (context.Context, context.CancelFunc) {
+	deadline, ok := t.Deadline()
+	if ok {
+		return context.WithDeadline(context.Background(), deadline)
+	}
+	return context.WithCancel(context.Background())
 }
