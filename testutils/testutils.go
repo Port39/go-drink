@@ -19,6 +19,14 @@ func ExpectError(err error, t *testing.T) {
 	ExpectSuccess(err != nil, t)
 }
 
+func ExpectErrorWithMessage(err error, msg string, t *testing.T) {
+	t.Helper()
+	ExpectError(err, t)
+	if err.Error() != msg {
+		t.Fatalf("Expected error '%s', but got '%s' instead.", msg, err.Error())
+	}
+}
+
 func FailOnError(err error, t *testing.T) {
 	t.Helper()
 	if err != nil {
@@ -29,7 +37,7 @@ func FailOnError(err error, t *testing.T) {
 func ExpectFailure(cond bool, t *testing.T) {
 	t.Helper()
 	if cond {
-		t.Fail()
+		t.FailNow()
 	}
 }
 
