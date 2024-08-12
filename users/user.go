@@ -162,17 +162,24 @@ func GetUserForNFCToken(ctx context.Context, token []byte, db *sql.DB) (User, er
 
 func GetUsernamesWithNoneAuth(ctx context.Context, db *sql.DB) ([]string, error) {
 	result, err := db.QueryContext(ctx, `SELECT user_id FROM auth WHERE type = 'none'`)
-	defer result.Close()
 	if err != nil {
 		return nil, err
 	}
-	names := make([]string, 0)
+	userIds := make([]string, 0)
 	for result.Next() {
 		var userId string
 		err = result.Scan(&userId)
 		if err != nil {
 			continue
 		}
+		userIds = append(userIds, userId)
+	}
+	err = result.Close()
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0)
+	for _, userId := range userIds {
 		user, err := GetUserForId(ctx, userId, db)
 		if err != nil {
 			continue
