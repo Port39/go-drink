@@ -33,10 +33,10 @@ func GetALlItems(ctx context.Context, db *sql.DB) ([]Item, error) {
 	items := make([]Item, 0)
 
 	result, err := db.QueryContext(ctx, `SELECT id, name, price, image, amount, barcode FROM items`)
-	defer result.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer result.Close()
 	for result.Next() {
 		var item Item
 		var imageData []byte
@@ -52,10 +52,10 @@ func GetALlItems(ctx context.Context, db *sql.DB) ([]Item, error) {
 
 func GetItemByName(ctx context.Context, name string, db *sql.DB) (Item, error) {
 	result, err := db.QueryContext(ctx, "SELECT id, name, price, image, amount, barcode FROM items WHERE name = $1", name)
-	defer result.Close()
 	if err != nil {
 		return Item{}, err
 	}
+	defer result.Close()
 	if !result.Next() {
 		return Item{}, errors.New("no such item")
 	}
@@ -68,10 +68,10 @@ func GetItemByName(ctx context.Context, name string, db *sql.DB) (Item, error) {
 
 func GetItemById(ctx context.Context, id string, db *sql.DB) (Item, error) {
 	result, err := db.QueryContext(ctx, "SELECT id, name, price, image, amount, barcode FROM items WHERE id = $1", id)
-	defer result.Close()
 	if err != nil {
 		return Item{}, err
 	}
+	defer result.Close()
 	if !result.Next() {
 		return Item{}, errors.New("no such item")
 	}
@@ -84,10 +84,10 @@ func GetItemById(ctx context.Context, id string, db *sql.DB) (Item, error) {
 
 func GetItemByBarcode(ctx context.Context, barcode string, db *sql.DB) (Item, error) {
 	result, err := db.QueryContext(ctx, "SELECT id, name, price, image, amount, barcode FROM items WHERE barcode = $1", barcode)
-	defer result.Close()
 	if err != nil {
 		return Item{}, err
 	}
+	defer result.Close()
 	if !result.Next() {
 		return Item{}, errors.New("no such item")
 	}

@@ -88,12 +88,12 @@ func getItems(w http.ResponseWriter, r *http.Request) {
 
 func addItem(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 	var req addItemRequest
 	err = json.Unmarshal(rawBody, &req)
 	if err != nil {
@@ -140,12 +140,12 @@ func addItem(w http.ResponseWriter, r *http.Request) {
 
 func updateItem(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 	var req updateItemRequest
 	err = json.Unmarshal(rawBody, &req)
 	if err != nil {
@@ -233,12 +233,12 @@ func getUsersWithNoneAuth(w http.ResponseWriter, r *http.Request) {
 
 func registerWithPassword(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 
 	var req passwordRegistrationRequest
 	err = json.Unmarshal(rawBody, &req)
@@ -299,12 +299,12 @@ func addAuthMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 	var req addAuthMethodRequest
 	err = json.Unmarshal(rawBody, &req)
 	if err != nil {
@@ -334,12 +334,12 @@ func addAuthMethod(w http.ResponseWriter, r *http.Request) {
 
 func loginWithPassword(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 
 	var req passwordLoginRequest
 	err = json.Unmarshal(rawBody, &req)
@@ -398,12 +398,12 @@ func loginCash(w http.ResponseWriter, r *http.Request) {
 
 func loginNone(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 
 	var req noneLoginRequest
 	err = json.Unmarshal(rawBody, &req)
@@ -436,12 +436,12 @@ func loginNone(w http.ResponseWriter, r *http.Request) {
 
 func loginNFC(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 
 	var req nfcLoginRequest
 	err = json.Unmarshal(rawBody, &req)
@@ -501,12 +501,12 @@ func buyItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 	var req buyItemRequest
 	err = json.Unmarshal(rawBody, &req)
 	if err != nil {
@@ -654,12 +654,12 @@ func changeCredit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 	var req changeCreditRequest
 	err = json.Unmarshal(rawBody, &req)
 	if err != nil {
@@ -685,12 +685,12 @@ func changeCredit(w http.ResponseWriter, r *http.Request) {
 
 func requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 	var req requestPasswordResetRequest
 	err = json.Unmarshal(rawBody, &req)
 	if err != nil {
@@ -717,12 +717,12 @@ func requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 
 func resetPassword(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
 	if err != nil {
 		log.Println("Error reading body:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 	var req resetPasswordRequest
 	err = json.Unmarshal(rawBody, &req)
 	if err != nil {

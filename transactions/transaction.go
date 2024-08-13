@@ -35,10 +35,10 @@ func VerifyTransactionTableExists(db *sql.DB) error {
 func GetTransactionsSince(ctx context.Context, since, until int64, db *sql.DB) ([]Transaction, error) {
 	transactions := make([]Transaction, 0)
 	result, err := db.QueryContext(ctx, "SELECT id, itemid, userid, amount, authbackend, timestamp FROM transactions WHERE timestamp > $1 AND timestamp < $2", since, until)
-	defer result.Close()
 	if err != nil {
 		return transactions, err
 	}
+	defer result.Close()
 	for result.Next() {
 		var tr Transaction
 		err = result.Scan(&tr.Id, &tr.ItemId, &tr.UserId, &tr.Amount, &tr.AuthBackend, &tr.Timestamp)
