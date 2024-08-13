@@ -30,11 +30,11 @@ func CheckHIBP(password string) bool {
 	prefix := hash[:5]
 	suffix := hash[5:]
 	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://api.pwnedpasswords.com/range/%s", prefix))
-	defer resp.Body.Close()
 	if err != nil {
 		// can't do much, fail insecurely to not disrupt functionality
 		return false
 	}
+	defer resp.Body.Close()
 	s := bufio.NewScanner(resp.Body)
 	for s.Scan() {
 		if strings.HasPrefix(s.Text(), suffix) {

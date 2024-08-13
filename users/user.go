@@ -114,10 +114,10 @@ func VerifyPasswordResetTableExists(db *sql.DB) error {
 
 func GetUserForId(ctx context.Context, id string, db *sql.DB) (User, error) {
 	result, err := db.QueryContext(ctx, "SELECT id, username, email, role, credit FROM users WHERE id = $1", id)
-	defer result.Close()
 	if err != nil {
 		return User{}, err
 	}
+	defer result.Close()
 	if !result.Next() {
 		return User{}, errors.New("no such user")
 	}
@@ -128,10 +128,10 @@ func GetUserForId(ctx context.Context, id string, db *sql.DB) (User, error) {
 
 func GetUserForUsername(ctx context.Context, username string, db *sql.DB) (User, error) {
 	result, err := db.QueryContext(ctx, "SELECT id, username, email, role, credit FROM users WHERE username = $1", username)
-	defer result.Close()
 	if err != nil {
 		return User{}, err
 	}
+	defer result.Close()
 	if !result.Next() {
 		return User{}, errors.New("no such user")
 	}
@@ -209,10 +209,10 @@ func AddAuthenticationWithTransaction(ctx context.Context, auth AuthenticationDa
 
 func GetAuthForUser(ctx context.Context, id, authtype string, db *sql.DB) (AuthenticationData, error) {
 	result, err := db.QueryContext(ctx, "SELECT user_id, type, data FROM auth WHERE user_id = $1 AND type = $2", id, authtype)
-	defer result.Close()
 	if err != nil {
 		return AuthenticationData{}, err
 	}
+	defer result.Close()
 	if !result.Next() {
 		return AuthenticationData{}, errors.New("no matching authentication available")
 	}
@@ -224,10 +224,10 @@ func GetAuthForUser(ctx context.Context, id, authtype string, db *sql.DB) (Authe
 func GetAllUsers(ctx context.Context, db *sql.DB) ([]User, error) {
 	users := make([]User, 0)
 	result, err := db.QueryContext(ctx, "SELECT id, username, email, role, credit FROM users")
-	defer result.Close()
 	if err != nil {
 		return users, err
 	}
+	defer result.Close()
 	for result.Next() {
 		var user User
 		err = result.Scan(&user.Id, &user.Username, &user.Email, &user.Role, &user.Credit)
