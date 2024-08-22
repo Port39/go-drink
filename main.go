@@ -4,19 +4,21 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Port39/go-drink/handlehttp"
 	"github.com/Port39/go-drink/items"
 	"github.com/Port39/go-drink/mailing"
 	"github.com/Port39/go-drink/session"
 	"github.com/Port39/go-drink/transactions"
 	"github.com/Port39/go-drink/users"
 	_ "github.com/lib/pq"
-	"log"
 	_ "modernc.org/sqlite"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const ContextKeySessionToken = "SESSION_TOKEN"
@@ -188,11 +190,35 @@ func initialize() {
 	}()
 }
 
+func newGetItems(r *http.Request) any {
+	allItems, err := items.GetAllItems(r.Context(), database)
+	if allItems != nil {
+		return allItems
+	}
+	return err
+}
+
+func ToJsonAndHtml(htmlPath string) handlehttp.GetResponseMapper {
+	return handlehttp.MatchByAcceptHeader(
+		handlehttp.ByAccept[handlehttp.ResponseMapper]{
+			Json: handlehttp.JsonMapper(),
+			Html: handlehttp.HtmlMapper(htmlPath),
+		},
+	)
+}
+
+func HandleEnhanced(path string, mapper handlehttp.RequestResponseHandler) {
+	http.HandleFunc(path, addCorsHeader(enrichRequestContext(mapper)))
+}
+
 func main() {
 
 	initialize()
 
-	http.HandleFunc("GET /items", addCorsHeader(enrichRequestContext(getItems)))
+	HandleEnhanced("GET /items",
+		handlehttp.MappingResultOf(newGetItems, ToJsonAndHtml("html/base.gohtml")),
+	)
+
 	http.HandleFunc("GET /items/{id}", addCorsHeader(enrichRequestContext(getItem)))
 	http.HandleFunc("POST /items/add", addCorsHeader(enrichRequestContext(verifyRole("admin", addItem))))
 	http.HandleFunc("POST /items/update", addCorsHeader(enrichRequestContext(verifyRole("admin", updateItem))))
@@ -221,7 +247,9 @@ func main() {
 
 	http.HandleFunc("POST /credit", addCorsHeader(enrichRequestContext(verifyRole("user", changeCredit))))
 
-	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.Port), nil)
+	uri := fmt.Sprintf("0.0.0.0:%d", config.Port)
+	log.Println("Serving go-drink on " + uri)
+	err := http.ListenAndServe(uri, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
