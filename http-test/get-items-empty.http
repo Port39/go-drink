@@ -1,4 +1,5 @@
 GET {{godrink_url}}/items
+Accept: application/json
 
 > {%
     client.test("returns 200", () => {
@@ -15,5 +16,13 @@ GET {{godrink_url}}/items
 
     client.test("returns empty array", () => {
         client.assert(response.body.length === 0)
+    })
+%}
+
+GET {{godrink_url}}/items
+
+> {%
+    client.test("returns 404", () => {
+        client.assert(response.status === 404)
     })
 %}
