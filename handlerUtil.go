@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Port39/go-drink/domain_errors"
+	"github.com/Port39/go-drink/handlehttp"
 	"github.com/Port39/go-drink/session"
 	"github.com/Port39/go-drink/users"
 	"io"
@@ -12,52 +14,66 @@ import (
 	"strings"
 )
 
-func addCorsHeader(next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if config.AddCorsHeader {
-			w.Header().Set("Access-Control-Allow-Origin", config.CorsWhitelist)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
+func addCorsHeader(next handlehttp.GetResponseMapper) handlehttp.GetResponseMapper {
+	return func(r *http.Request) *handlehttp.ResponseMapper {
+		mapper := next(r)
+		var newMapper handlehttp.ResponseMapper = func(w http.ResponseWriter, data any) {
+			if config.AddCorsHeader {
+				w.Header().Set("Access-Control-Allow-Origin", config.CorsWhitelist)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+
+			(*mapper)(w, data)
 		}
-		next(w, r)
+		return &newMapper
 	}
 }
 
-func enrichRequestContext(next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+func handleProblemDetails(next handlehttp.GetResponseMapper) handlehttp.GetResponseMapper {
+	return func(r *http.Request) *handlehttp.ResponseMapper {
+		mapper := next(r)
+		var newMapper handlehttp.ResponseMapper = func(w http.ResponseWriter, data any) {
+			if data, ok := data.(domain_errors.ProblemDetail); ok {
+				w.WriteHeader(data.Status)
+			}
+			(*mapper)(w, data)
+		}
+		return &newMapper
+	}
+}
+
+func enrichRequestContext(next handlehttp.RequestHandler) handlehttp.RequestHandler {
+	return func(r *http.Request) any {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			next(w, r)
-			return
+			return next(r)
 		}
 
 		split := strings.Split(authHeader, " ")
 		if len(split) != 2 || split[0] != "Bearer" {
-			next(w, r)
-			return
+			return next(r)
 		}
-		next(w, r.Clone(context.WithValue(r.Context(), ContextKeySessionToken, split[1])))
+		return next(r.Clone(context.WithValue(r.Context(), ContextKeySessionToken, split[1])))
 	}
 }
 
-func verifyRole(role string, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+func verifyRole(role string, next handlehttp.RequestHandler) handlehttp.RequestHandler {
+	return func(r *http.Request) any {
 		sessionToken := r.Context().Value(ContextKeySessionToken)
 		if sessionToken == nil {
-			respondUnauthorized(w)
-			return
+			return domain_errors.Unauthorized
 		}
 
 		s, err := sessionStore.Get(sessionToken.(string))
 		if err != nil || !session.IsValid(&s) {
-			respondUnauthorized(w)
-			return
+			return domain_errors.Unauthorized
 		}
 
 		if !users.CheckRole(s.Role, role) {
-			respondForbidden(w)
-			return
+			return domain_errors.Forbidden
 		}
-		next(w, r)
+
+		return next(r)
 	}
 }
 
