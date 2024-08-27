@@ -10,7 +10,7 @@ func activateJsonResponse(w http.ResponseWriter) {
 	w.Header().Set("content-type", Json.String())
 }
 
-func ToJson(w http.ResponseWriter, data any) {
+func WriteAsJson(w http.ResponseWriter, data any) {
 	resp, err := json.Marshal(data)
 
 	if err != nil {
@@ -27,6 +27,4 @@ func ToJson(w http.ResponseWriter, data any) {
 	}
 }
 
-func JsonMapper() ResponseMapper {
-	return ToJson
-}
+var JsonMapper ResponseMapper = WriteAsJson
