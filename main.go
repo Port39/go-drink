@@ -190,62 +190,55 @@ func initialize() {
 	}()
 }
 
-func newGetItems(r *http.Request) any {
-	allItems, err := items.GetAllItems(r.Context(), database)
-	if allItems != nil {
-		return allItems
-	}
-	return err
-}
-
-func ToJsonAndHtml(htmlPath string) handlehttp.GetResponseMapper {
+func ToJsonOrHtmlByAccept(htmlPath string) handlehttp.GetResponseMapper {
 	return handlehttp.MatchByAcceptHeader(
 		handlehttp.ByAccept[handlehttp.ResponseMapper]{
-			Json: handlehttp.JsonMapper(),
+			Json: handlehttp.JsonMapper,
 			Html: handlehttp.HtmlMapper(htmlPath),
 		},
 	)
 }
 
-func HandleEnhanced(path string, mapper handlehttp.RequestResponseHandler) {
-	http.HandleFunc(path, addCorsHeader(enrichRequestContext(mapper)))
+func HandleEnhanced(path string, handler handlehttp.RequestHandler, getMapper handlehttp.GetResponseMapper) {
+	http.HandleFunc(path, handlehttp.MappingResultOf(
+		enrichRequestContext(handler),
+		handleProblemDetails(addCorsHeader(getMapper))),
+	)
 }
 
 func main() {
 
 	initialize()
 
-	HandleEnhanced("GET /items",
-		handlehttp.MappingResultOf(newGetItems, ToJsonAndHtml("html/base.gohtml")),
-	)
+	HandleEnhanced("GET /items", getItems, ToJsonOrHtmlByAccept("html/base.gohtml"))
 
-	http.HandleFunc("GET /items/{id}", addCorsHeader(enrichRequestContext(getItem)))
-	http.HandleFunc("POST /items/add", addCorsHeader(enrichRequestContext(verifyRole("admin", addItem))))
-	http.HandleFunc("POST /items/update", addCorsHeader(enrichRequestContext(verifyRole("admin", updateItem))))
-	http.HandleFunc("GET /items/barcode/{id}", addCorsHeader(enrichRequestContext(getItemByBarcode)))
+	HandleEnhanced("GET /items/{id}", getItem, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("POST /items/add", verifyRole("admin", addItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("POST /items/update", verifyRole("admin", updateItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("GET /items/barcode/{id}", getItemByBarcode, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	http.HandleFunc("GET /users", addCorsHeader(enrichRequestContext(verifyRole("admin", getUsers))))
-	http.HandleFunc("GET /users/noauth", addCorsHeader(enrichRequestContext(getUsersWithNoneAuth)))
-	http.HandleFunc("GET /users/{id}", addCorsHeader(enrichRequestContext(verifyRole("admin", getUser))))
+	HandleEnhanced("GET /users", verifyRole("admin", getUsers), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("GET /users/noauth", getUsersWithNoneAuth, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("GET /users/{id}", verifyRole("admin", getUser), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	http.HandleFunc("POST /register/password", addCorsHeader(enrichRequestContext(registerWithPassword)))
+	HandleEnhanced("POST /register/password", registerWithPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	http.HandleFunc("POST /auth/add", addCorsHeader(enrichRequestContext(verifyRole("user", addAuthMethod))))
-	http.HandleFunc("POST /auth/password-reset/request", addCorsHeader(enrichRequestContext(requestPasswordReset)))
-	http.HandleFunc("POST /auth/password-reset", addCorsHeader(enrichRequestContext(resetPassword)))
+	HandleEnhanced("POST /auth/add", verifyRole("user", addAuthMethod), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("POST /auth/password-reset/request", requestPasswordReset, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("POST /auth/password-reset", resetPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	http.HandleFunc("POST /login/password", addCorsHeader(enrichRequestContext(loginWithPassword)))
-	http.HandleFunc("POST /login/cash", addCorsHeader(enrichRequestContext(loginCash)))
-	http.HandleFunc("POST /login/none", addCorsHeader(enrichRequestContext(loginNone)))
-	http.HandleFunc("POST /login/nfc", addCorsHeader(enrichRequestContext(loginNFC)))
+	HandleEnhanced("POST /login/password", loginWithPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("POST /login/cash", loginCash, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("POST /login/none", loginNone, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	HandleEnhanced("POST /login/nfc", loginNFC, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	http.HandleFunc("POST /logout", addCorsHeader(enrichRequestContext(logout)))
+	HandleEnhanced("POST /logout", logout, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	http.HandleFunc("POST /buy", addCorsHeader(enrichRequestContext(verifyRole("user", buyItem))))
+	HandleEnhanced("POST /buy", verifyRole("user", buyItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	http.HandleFunc("GET /transactions", addCorsHeader(enrichRequestContext(verifyRole("admin", getTransactions))))
+	HandleEnhanced("GET /transactions", verifyRole("admin", getTransactions), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	http.HandleFunc("POST /credit", addCorsHeader(enrichRequestContext(verifyRole("user", changeCredit))))
+	HandleEnhanced("POST /credit", verifyRole("user", changeCredit), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
 	uri := fmt.Sprintf("0.0.0.0:%d", config.Port)
 	log.Println("Serving go-drink on " + uri)
