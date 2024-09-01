@@ -1,0 +1,23 @@
+**.*Browser* -> WebApp-Standard-Komponenten
+WebApp-Standard-Komponenten -> sx-cluster.Web-Frontend-Server 
+WebApp-Standard-Komponenten -> sx-cluster.GoDrink-Backend
+
+sx-cluster.shape: cloud
+
+port39 {
+    kühlschrank-raspi {
+        NFC-Reader-Service <- WebApp-Hardware-Funktionen
+        Barcode-Service <- WebApp-Hardware-Funktionen
+        WebApp-Hardware-Funktionen <- Browser: localhost
+    }
+    
+    laptop: {
+        Browser
+    }
+}
+
+WebApp-Standard-Komponenten
+
+extern {
+    Browser
+}
