@@ -11,6 +11,10 @@ func activateJsonResponse(w http.ResponseWriter) {
 }
 
 func WriteAsJson(w http.ResponseWriter, data any) {
+	if data == nil {
+		return
+	}
+
 	resp, err := json.Marshal(data)
 
 	if err != nil {

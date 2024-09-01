@@ -5,7 +5,7 @@ import (
 )
 
 type RequestResponseHandler func(w http.ResponseWriter, r *http.Request)
-type RequestHandler func(r *http.Request) (result any)
+type RequestHandler func(r *http.Request) (status int, result any)
 type ResponseMapper func(w http.ResponseWriter, data any)
 type GetResponseMapper func(r *http.Request) *ResponseMapper
 
@@ -27,7 +27,8 @@ func MappingResultOf(handler RequestHandler, getMapper GetResponseMapper) Reques
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		result := (handler)(r)
+		status, result := (handler)(r)
+		w.WriteHeader(status)
 		(*mapper)(w, result)
 	}
 }

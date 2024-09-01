@@ -25,21 +25,21 @@ type ValidationProblemDetail struct {
 	Field string `json:"field"`
 }
 
-func ForStatus(status int) ProblemDetail {
-	return ProblemDetail{
+func ForStatus(status int) (int, ProblemDetail) {
+	return status, ProblemDetail{
 		Type:   DefaultProblemType,
 		Title:  http.StatusText(status),
 		Status: int(status),
 	}
 }
 
-var Unauthorized ProblemDetail = ForStatus(http.StatusUnauthorized)
-var Forbidden ProblemDetail = ForStatus(http.StatusForbidden)
-var InternalServerError ProblemDetail = ForStatus(http.StatusInternalServerError)
-var NotFound ProblemDetail = ForStatus(http.StatusNotFound)
+func Unauthorized() (int, ProblemDetail)        { return ForStatus(http.StatusUnauthorized) }
+func Forbidden() (int, ProblemDetail)           { return ForStatus(http.StatusForbidden) }
+func InternalServerError() (int, ProblemDetail) { return ForStatus(http.StatusInternalServerError) }
+func NotFound() (int, ProblemDetail)            { return ForStatus(http.StatusNotFound) }
 
-func ForStatusAndDetail(status int, detail string) ProblemDetail {
-	result := ForStatus(status)
+func ForStatusAndDetail(status int, detail string) (int, ProblemDetail) {
+	status, result := ForStatus(status)
 	result.Detail = detail
-	return result
+	return status, result
 }

@@ -202,7 +202,7 @@ func ToJsonOrHtmlByAccept(htmlPath string) handlehttp.GetResponseMapper {
 func HandleEnhanced(path string, handler handlehttp.RequestHandler, getMapper handlehttp.GetResponseMapper) {
 	http.HandleFunc(path, handlehttp.MappingResultOf(
 		enrichRequestContext(handler),
-		handleProblemDetails(addCorsHeader(getMapper))),
+		addCorsHeader(getMapper)),
 	)
 }
 
