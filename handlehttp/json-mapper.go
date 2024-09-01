@@ -6,29 +6,30 @@ import (
 	"net/http"
 )
 
-func activateJsonResponse(w http.ResponseWriter) {
-	w.Header().Set("content-type", Json.String())
-}
+func WriteAsJson(w http.ResponseWriter, status int, data any) {
+	var resp []byte
+	var err error
 
-func WriteAsJson(w http.ResponseWriter, data any) {
-	if data == nil {
-		return
+	if data != nil {
+		resp, err = json.Marshal(data)
+
+		if err != nil {
+			log.Println("Error while creating json response:", err)
+			status = http.StatusInternalServerError
+		}
 	}
 
-	resp, err := json.Marshal(data)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 
-	if err != nil {
-		log.Println("Error while creating json response:", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if resp != nil {
+		_, err = w.Write(resp)
+
+		if err != nil {
+			log.Println("Error writing response", err)
+		}
 	}
 
-	activateJsonResponse(w)
-	_, err = w.Write(resp)
-
-	if err != nil {
-		log.Println("Error writing response", err)
-	}
 }
 
 var JsonMapper ResponseMapper = WriteAsJson
