@@ -237,7 +237,7 @@ paths:
                   type: string
                   description: the username for which the password should be reseted
       responses:
-        200:
+        204:
           description: If a valid request was made, no data is returned. Note that this response status neither confirms that an email was sent, nor that the specified user exists
         400:
           $ref: "#/components/responses/400"
@@ -344,7 +344,7 @@ paths:
     post:
       description: if this endpoint is called while being authenticated, the current session is destroyed
       responses:
-        200:
+        204:
           description: in any case, no data is returned
   /buy:
     post:

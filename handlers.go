@@ -339,7 +339,7 @@ var buyItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		log.Println("error while performing transaction", err)
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
-	return http.StatusNoContent, nil
+	return http.StatusOK, nil
 }
 
 var getTransactions handlehttp.RequestHandler = func(r *http.Request) (int, any) {
@@ -430,7 +430,7 @@ var changeCredit handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		return domain_errors.InternalServerError()
 	}
 
-	return http.StatusNoContent, nil
+	return http.StatusOK, nil
 }
 
 var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (int, any) {
@@ -462,5 +462,5 @@ var resetPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "Error resetting password")
 	}
 
-	return http.StatusNoContent, nil
+	return http.StatusCreated, nil
 }
