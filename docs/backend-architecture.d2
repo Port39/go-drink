@@ -1,0 +1,63 @@
+Browser --> go-drink-backend: HTTP-Request
+
+go-drink-backend: {
+
+
+  Request: http.Request {
+    shape: document
+  }
+
+  Response: status int, result any {
+    shape: document
+  }
+  
+  HttpResponse: Serialized Response Data {
+    shape: document
+  }
+
+  main -- RequestHandler: Chooses based on Request-URL
+  RequestHandler: {
+    For /items
+    For /users
+    Etc
+  }
+
+  ResponseMapper: {
+    Json
+    Html
+  }
+
+  Request-MiddleWare: {
+    Read Auth Headers
+    Verify User Permissions
+  }
+
+  RequestHandler <--> Services: call app logic
+  Services: {
+  }
+
+  Services <--> Database: process persistent data 
+  Database: {
+    Posgres
+    SQLite
+  }
+
+  Response-Middleware: {
+    Add Cors Headers
+  }
+
+
+  Request --> Request-MiddleWare
+  Request-MiddleWare --> RequestHandler: Enhanced http.Request
+  RequestHandler --> Response 
+  Response --> ResponseMapper 
+  ResponseMapper --> Response-Middleware: HTTP-Response Data
+  Response-Middleware --> HttpResponse: Enhanced HTTP-Response Data
+
+}
+
+
+
+
+
+go-drink-backend --> Browser: HTTP-Response
