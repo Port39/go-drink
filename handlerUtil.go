@@ -29,21 +29,8 @@ func addCorsHeader(next handlehttp.GetResponseMapper) handlehttp.GetResponseMapp
 	}
 }
 
-func handleProblemDetails(next handlehttp.GetResponseMapper) handlehttp.GetResponseMapper {
-	return func(r *http.Request) *handlehttp.ResponseMapper {
-		mapper := next(r)
-		var newMapper handlehttp.ResponseMapper = func(w http.ResponseWriter, data any) {
-			if data, ok := data.(domain_errors.ProblemDetail); ok {
-				w.WriteHeader(data.Status)
-			}
-			(*mapper)(w, data)
-		}
-		return &newMapper
-	}
-}
-
 func enrichRequestContext(next handlehttp.RequestHandler) handlehttp.RequestHandler {
-	return func(r *http.Request) any {
+	return func(r *http.Request) (int, any) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			return next(r)
@@ -58,53 +45,23 @@ func enrichRequestContext(next handlehttp.RequestHandler) handlehttp.RequestHand
 }
 
 func verifyRole(role string, next handlehttp.RequestHandler) handlehttp.RequestHandler {
-	return func(r *http.Request) any {
+	return func(r *http.Request) (int, any) {
 		sessionToken := r.Context().Value(ContextKeySessionToken)
 		if sessionToken == nil {
-			return domain_errors.Unauthorized
+			return http.StatusUnauthorized, domain_errors.Unauthorized
 		}
 
 		s, err := sessionStore.Get(sessionToken.(string))
 		if err != nil || !session.IsValid(&s) {
-			return domain_errors.Unauthorized
+			return http.StatusUnauthorized, domain_errors.Unauthorized
 		}
 
 		if !users.CheckRole(s.Role, role) {
-			return domain_errors.Forbidden
+			return http.StatusForbidden, domain_errors.Forbidden
 		}
 
 		return next(r)
 	}
-}
-
-func respondWithJson(w http.ResponseWriter, response any) {
-	resp, err := json.Marshal(response)
-
-	if err != nil {
-		logAndRespondWithInternalError(w, "Error while creating json response:", err)
-		return
-	}
-
-	activateJsonResponse(w)
-	_, err = w.Write(resp)
-}
-
-func logAndRespondWithInternalError(w http.ResponseWriter, errMessage string, err error) {
-	log.Println(errMessage, err)
-	w.WriteHeader(http.StatusInternalServerError)
-}
-
-func respondBadRequest(w http.ResponseWriter, errMessage string) {
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte(errMessage))
-}
-
-func respondUnauthorized(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusUnauthorized)
-}
-
-func respondForbidden(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusForbidden)
 }
 
 func activateJsonResponse(w http.ResponseWriter) {
