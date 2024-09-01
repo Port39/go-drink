@@ -1,0 +1,18 @@
+# All "hidden" files / folders
+.*
+
+# Docs
+*.md
+
+# Tests
+http-test
+
+# API-Spec
+openapi.yaml
+
+docker-compose.*
+
+# Don't even try it!
+!.dockerignore
+!Dockerfile
+
