@@ -1,8 +1,8 @@
 POST {{godrink_url}}/logout
 
 > {%
- client.test("returns 200", ()=>{
-     client.assert(response.status === 200)
+ client.test("returns 204", ()=>{
+     client.assert(response.status === 204)
  })
 
  client.test("no body", () => {
