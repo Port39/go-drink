@@ -29,7 +29,7 @@ var getItems handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var addItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := readValidJsonBody[*addItemRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*addItemRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
@@ -62,7 +62,7 @@ var addItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var updateItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := readValidJsonBody[*updateItemRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*updateItemRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
@@ -110,7 +110,7 @@ var getUsersWithNoneAuth handlehttp.RequestHandler = func(r *http.Request) (int,
 }
 
 var registerWithPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := readValidJsonBody[*passwordRegistrationRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*passwordRegistrationRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
@@ -166,7 +166,7 @@ var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		return domain_errors.Unauthorized()
 	}
 
-	reqPointer, err := readValidJsonBody[*addAuthMethodRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*addAuthMethodRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
@@ -190,7 +190,7 @@ var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var loginWithPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := readValidJsonBody[*passwordLoginRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*passwordLoginRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
@@ -238,7 +238,7 @@ var loginCash handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var loginNone handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := readValidJsonBody[*noneLoginRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*noneLoginRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
@@ -267,7 +267,7 @@ var loginNone handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var loginNFC handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := readValidJsonBody[*nfcLoginRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*nfcLoginRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
@@ -318,7 +318,7 @@ var buyItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		return domain_errors.Unauthorized()
 	}
 
-	reqPointer, err := readValidJsonBody[*buyItemRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*buyItemRequest](r)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
@@ -414,7 +414,7 @@ var changeCredit handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		log.Println("Error getting user:", err)
 		return domain_errors.InternalServerError()
 	}
-	reqPointer, err := readValidJsonBody[*changeCreditRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*changeCreditRequest](r)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
@@ -434,7 +434,7 @@ var changeCredit handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := readValidJsonBody[*requestPasswordResetRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*requestPasswordResetRequest](r)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
@@ -451,7 +451,7 @@ var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (int,
 }
 
 var resetPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := readValidJsonBody[*resetPasswordRequest](r)
+	reqPointer, err := handlehttp.ReadValidJsonBody[*resetPasswordRequest](r)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
