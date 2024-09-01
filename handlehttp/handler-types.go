@@ -6,7 +6,7 @@ import (
 
 type RequestResponseHandler func(w http.ResponseWriter, r *http.Request)
 type RequestHandler func(r *http.Request) (status int, result any)
-type ResponseMapper func(w http.ResponseWriter, data any)
+type ResponseMapper func(w http.ResponseWriter, status int, data any)
 type GetResponseMapper func(r *http.Request) *ResponseMapper
 
 func AlwaysMapWith(mapper ResponseMapper) GetResponseMapper {
@@ -28,7 +28,6 @@ func MappingResultOf(handler RequestHandler, getMapper GetResponseMapper) Reques
 			return
 		}
 		status, result := (handler)(r)
-		w.WriteHeader(status)
-		(*mapper)(w, result)
+		(*mapper)(w, status, result)
 	}
 }
