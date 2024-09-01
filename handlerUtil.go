@@ -2,32 +2,17 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
+	"embed"
 	"github.com/Port39/go-drink/domain_errors"
 	"github.com/Port39/go-drink/handlehttp"
 	"github.com/Port39/go-drink/session"
 	"github.com/Port39/go-drink/users"
-	"io"
-	"log"
+	"io/fs"
 	"net/http"
 	"strings"
 )
 
-func addCorsHeader(next handlehttp.GetResponseMapper) handlehttp.GetResponseMapper {
-	return func(r *http.Request) *handlehttp.ResponseMapper {
-		mapper := next(r)
-		var newMapper handlehttp.ResponseMapper = func(w http.ResponseWriter, data any) {
-			if config.AddCorsHeader {
-				w.Header().Set("Access-Control-Allow-Origin", config.CorsWhitelist)
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-			}
-
-			(*mapper)(w, data)
-		}
-		return &newMapper
-	}
-}
+const ContextKeySessionToken = "SESSION_TOKEN"
 
 func enrichRequestContext(next handlehttp.RequestHandler) handlehttp.RequestHandler {
 	return func(r *http.Request) (int, any) {
@@ -64,34 +49,34 @@ func verifyRole(role string, next handlehttp.RequestHandler) handlehttp.RequestH
 	}
 }
 
-func activateJsonResponse(w http.ResponseWriter) {
-	w.Header().Set("content-type", "application/json")
-}
+//go:embed html-frontend/templates/*.gohtml
+var rawHtmlTemplates embed.FS
 
-func logAndCreateError(message string, err error) error {
-	log.Println(message, err)
-	return errors.New(message)
-}
-
-type Validatable interface {
-	Validate() error
-}
-
-func readValidJsonBody[T Validatable](r *http.Request) (T, error) {
-	var req T
-
-	rawBody, err := io.ReadAll(r.Body)
+func getHtmlTemplates() fs.FS {
+	htmlTemplates, err := fs.Sub(rawHtmlTemplates, "html-frontend/templates")
 	if err != nil {
-		return req, logAndCreateError("error reading request body", err)
+		panic("HTML Templates not found!")
 	}
-	defer r.Body.Close()
+	return htmlTemplates
+}
 
-	err = json.Unmarshal(rawBody, &req)
+var htmlTemplates fs.FS = getHtmlTemplates()
 
-	if err != nil {
-		return req, logAndCreateError("error unmarshalling json request body", err)
-	}
+func toJsonOrHtmlByAccept(htmlPath string) handlehttp.GetResponseMapper {
+	return handlehttp.MatchByAcceptHeader(
+		handlehttp.ByAccept[handlehttp.ResponseMapper]{
+			Json: handlehttp.JsonMapper,
+			Html: handlehttp.HtmlMapper(htmlTemplates, htmlPath),
+		},
+	)
+}
 
-	err = req.Validate()
-	return req, err
+func handleEnhanced(path string, handler handlehttp.RequestHandler, getMapper handlehttp.GetResponseMapper) {
+	http.HandleFunc(path, handlehttp.MappingResultOf(
+		enrichRequestContext(handler),
+		handlehttp.AddCorsHeader(handlehttp.CorsConfig{
+			AddCorsHeader: config.AddCorsHeader,
+			CorsWhitelist: config.CorsWhitelist,
+		}, getMapper)),
+	)
 }
