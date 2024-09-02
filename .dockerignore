@@ -3,6 +3,7 @@
 
 # Docs
 *.md
+docs
 
 # Tests
 http-test
