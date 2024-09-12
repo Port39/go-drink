@@ -3,29 +3,43 @@ package main
 import (
 	"context"
 	"embed"
+	"io/fs"
+	"net/http"
+	"strings"
+
 	"github.com/Port39/go-drink/domain_errors"
 	"github.com/Port39/go-drink/handlehttp"
 	"github.com/Port39/go-drink/session"
 	"github.com/Port39/go-drink/users"
-	"io/fs"
-	"net/http"
-	"strings"
 )
 
 const ContextKeySessionToken = "SESSION_TOKEN"
 
 func enrichRequestContext(next handlehttp.RequestHandler) handlehttp.RequestHandler {
 	return func(r *http.Request) (int, any) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			return next(r)
+		var token string = ""
+
+		authCookie, _ := r.Cookie(tokenCookieName)
+
+		if authCookie != nil {
+			token = authCookie.Value
 		}
 
-		split := strings.Split(authHeader, " ")
-		if len(split) != 2 || split[0] != "Bearer" {
-			return next(r)
+		if token == "" {
+			authHeader := r.Header.Get("Authorization")
+
+			if authHeader == "" {
+				return next(r)
+			}
+
+			split := strings.Split(authHeader, " ")
+			if len(split) != 2 || split[0] != "Bearer" {
+				return next(r)
+			}
+			token = split[1]
 		}
-		return next(r.Clone(context.WithValue(r.Context(), ContextKeySessionToken, split[1])))
+
+		return next(r.Clone(context.WithValue(r.Context(), ContextKeySessionToken, token)))
 	}
 }
 
@@ -69,6 +83,20 @@ func toJsonOrHtmlByAccept(htmlPath string) handlehttp.GetResponseMapper {
 			Html: handlehttp.HtmlMapper(htmlTemplates, htmlPath),
 		},
 	)
+}
+
+var tokenCookieName = "__Host-Token"
+
+func writeSessionCookie(mapper handlehttp.ResponseMapper) handlehttp.ResponseMapper {
+	return func(w http.ResponseWriter, status int, data any) {
+		switch d := data.(type) {
+		case loginResponse:
+			token := d.Token
+			w.Header().Set("Set-Cookie", tokenCookieName+"="+token+";Secure;Same-Site=Strict;HttpOnly;Path=/")
+		default:
+		}
+		mapper(w, status, data)
+	}
 }
 
 func handleEnhanced(path string, handler handlehttp.RequestHandler, getMapper handlehttp.GetResponseMapper) {
