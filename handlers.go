@@ -29,17 +29,16 @@ var getItems handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var addItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := handlehttp.ReadValidJsonBody[*addItemRequest](r)
+	req, err := handlehttp.ReadValidBody[addItemRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
 
-	req := *reqPointer
-
 	_, err = items.GetItemByName(r.Context(), req.Name, database)
+	log.Println(err)
 
-	if err != nil {
+	if err == nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "Item already exists!")
 	}
 
@@ -62,13 +61,11 @@ var addItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var updateItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := handlehttp.ReadValidJsonBody[*updateItemRequest](r)
+	req, err := handlehttp.ReadValidBody[updateItemRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
-
-	req := *reqPointer
 
 	item, err := items.GetItemByName(r.Context(), req.Name, database)
 	if err == nil && item.Id != req.Id {
@@ -110,14 +107,12 @@ var getUsersWithNoneAuth handlehttp.RequestHandler = func(r *http.Request) (int,
 }
 
 var registerWithPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := handlehttp.ReadValidJsonBody[*passwordRegistrationRequest](r)
+	req, err := handlehttp.ReadValidBody[passwordRegistrationRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
-
-	req := *reqPointer
 
 	_, err = users.GetUserForUsername(r.Context(), req.Username, database)
 	if err == nil {
@@ -166,13 +161,11 @@ var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		return domain_errors.Unauthorized()
 	}
 
-	reqPointer, err := handlehttp.ReadValidJsonBody[*addAuthMethodRequest](r)
+	req, err := handlehttp.ReadValidBody[addAuthMethodRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
-
-	req := *reqPointer
 
 	data, _ := hex.DecodeString(req.Data) // already checked in the validate function
 	auth := users.AuthenticationData{
@@ -190,14 +183,13 @@ var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var loginWithPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := handlehttp.ReadValidJsonBody[*passwordLoginRequest](r)
+	req, err := handlehttp.ReadValidBody[passwordLoginRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
 
-	req := *reqPointer
 	user, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err != nil {
 		return domain_errors.Forbidden()
@@ -238,14 +230,12 @@ var loginCash handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var loginNone handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := handlehttp.ReadValidJsonBody[*noneLoginRequest](r)
+	req, err := handlehttp.ReadValidBody[noneLoginRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
-
-	req := *reqPointer
 
 	user, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err != nil {
@@ -267,14 +257,13 @@ var loginNone handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var loginNFC handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := handlehttp.ReadValidJsonBody[*nfcLoginRequest](r)
+	req, err := handlehttp.ReadValidBody[nfcLoginRequest](r)
 
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
 
-	req := *reqPointer
 	token, err := hex.DecodeString(req.Token)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
@@ -318,11 +307,10 @@ var buyItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		return domain_errors.Unauthorized()
 	}
 
-	reqPointer, err := handlehttp.ReadValidJsonBody[*buyItemRequest](r)
+	req, err := handlehttp.ReadValidBody[buyItemRequest](r)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
-	req := *reqPointer
 
 	item, err := items.GetItemById(r.Context(), req.ItemId, database)
 	if err != nil {
@@ -414,11 +402,10 @@ var changeCredit handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 		log.Println("Error getting user:", err)
 		return domain_errors.InternalServerError()
 	}
-	reqPointer, err := handlehttp.ReadValidJsonBody[*changeCreditRequest](r)
+	req, err := handlehttp.ReadValidBody[changeCreditRequest](r)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
-	req := *reqPointer
 
 	if user.Credit+req.Diff < 0 {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "lending money is not allowed")
@@ -434,11 +421,10 @@ var changeCredit handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 }
 
 var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := handlehttp.ReadValidJsonBody[*requestPasswordResetRequest](r)
+	req, err := handlehttp.ReadValidBody[requestPasswordResetRequest](r)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
-	req := *reqPointer
 
 	// doing things async, so response timing is not affected by the process.
 	go func() {
@@ -451,11 +437,10 @@ var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (int,
 }
 
 var resetPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	reqPointer, err := handlehttp.ReadValidJsonBody[*resetPasswordRequest](r)
+	req, err := handlehttp.ReadValidBody[resetPasswordRequest](r)
 	if err != nil {
 		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
 	}
-	req := *reqPointer
 	err = users.ResetPassword(r.Context(), req.Token, req.Password, database)
 	if err != nil {
 		log.Println("Error resetting password:", err)
