@@ -1,0 +1,21 @@
+:root {
+    --length-1: 1px;
+    --length-2: 4px;
+    --length-3: 8px;
+    --length-4: 16px;
+    --breakpoint-sm: 576px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 992px;
+    --breakpoint-xl: 1200px;
+    --breakpoint-xxl: 1400px;
+
+}
+
+body {
+    box-sizing: border-box;
+}
+
+header {
+    padding: var(--length-3);
+    margin-bottom: var(--length-2);
+}
