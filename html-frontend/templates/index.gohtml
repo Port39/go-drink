@@ -1,0 +1,18 @@
+{{ define "title" }}
+    Go-Drink - Home
+{{end}}
+{{define "content"}}
+    <section>
+        <article>
+            <p>Go-Drink is the official Drink management of Port39!</p>
+            <h2>Login</h2>
+            <form up-submit action="/login/password" method="post">
+                <label for="username">username</label>
+                <input name="username"></input>
+                <label for="password">password</label>
+                <input name="password"></input>
+                <input type="submit">Login</input>
+            </form>
+        </article>
+    </section>
+{{end}}
