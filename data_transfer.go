@@ -20,7 +20,7 @@ type passwordRegistrationRequest struct {
 	Password string `json:"password"`
 }
 
-func (p *passwordRegistrationRequest) Validate() error {
+func (p passwordRegistrationRequest) Validate() error {
 	if !USERNAME_REGEX.MatchString(p.Username) {
 		return errors.New("invalid username")
 	}
@@ -30,7 +30,7 @@ func (p *passwordRegistrationRequest) Validate() error {
 	return validatePassword(p.Password)
 }
 
-func (p *passwordLoginRequest) Validate() error {
+func (p passwordLoginRequest) Validate() error {
 	return nil
 }
 
@@ -39,7 +39,7 @@ type passwordLoginRequest struct {
 	Password string `json:"password"`
 }
 
-func (p *noneLoginRequest) Validate() error {
+func (p noneLoginRequest) Validate() error {
 	return nil
 }
 
@@ -47,7 +47,7 @@ type noneLoginRequest struct {
 	Username string `json:"username"`
 }
 
-func (p *nfcLoginRequest) Validate() error {
+func (p nfcLoginRequest) Validate() error {
 	return nil
 }
 
@@ -68,7 +68,7 @@ type addItemRequest struct {
 	Barcode string `json:"barcode"`
 }
 
-func (r *addItemRequest) Validate() error {
+func (r addItemRequest) Validate() error {
 	if len(r.Name) > 64 {
 		return errors.New("name to long")
 	}
@@ -94,7 +94,7 @@ type updateItemRequest struct {
 	Barcode string `json:"barcode"`
 }
 
-func (r *updateItemRequest) Validate() error {
+func (r updateItemRequest) Validate() error {
 	id, err := uuid.Parse(r.Id)
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ type buyItemRequest struct {
 	Amount int    `json:"amount"`
 }
 
-func (r *buyItemRequest) Validate() error {
+func (r buyItemRequest) Validate() error {
 	id, err := uuid.Parse(r.ItemId)
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ type addAuthMethodRequest struct {
 	Data   string `json:"data"`
 }
 
-func (r *addAuthMethodRequest) Validate() error {
+func (r addAuthMethodRequest) Validate() error {
 	if r.Method == "none" {
 		return nil
 	}
@@ -156,7 +156,7 @@ func (r *addAuthMethodRequest) Validate() error {
 	return errors.New("invalid method")
 }
 
-func (r *changeCreditRequest) Validate() error {
+func (r changeCreditRequest) Validate() error {
 	return nil
 }
 
@@ -168,7 +168,7 @@ type requestPasswordResetRequest struct {
 	Username string `json:"username"`
 }
 
-func (p *requestPasswordResetRequest) Validate() error {
+func (p requestPasswordResetRequest) Validate() error {
 	if !USERNAME_REGEX.MatchString(p.Username) {
 		return errors.New("invalid username")
 	}
@@ -180,7 +180,7 @@ type resetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
-func (p *resetPasswordRequest) Validate() error {
+func (p resetPasswordRequest) Validate() error {
 	token, err := uuid.Parse(p.Token)
 	if err != nil {
 		return err
