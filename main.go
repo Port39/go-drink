@@ -79,6 +79,10 @@ func initialize() {
 	}()
 }
 
+var noData handlehttp.RequestHandler = func(_ *http.Request) (int, any) {
+	return 200, nil
+}
+
 func main() {
 
 	initialize()
@@ -86,6 +90,8 @@ func main() {
 	handleEnhanced("GET /items", getItems, toJsonOrHtmlByAccept("base.gohtml"))
 	http.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./html-frontend/static"))))
 
+	handleEnhanced("GET /index", noData, toHtml("templates/index.gohtml"))
+	handleEnhanced("GET /", noData, toHtml("templates/index.gohtml"))
 	handleEnhanced("GET /items/{id}", getItem, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /items/add", verifyRole("admin", addItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /items/update", verifyRole("admin", updateItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
@@ -101,7 +107,7 @@ func main() {
 	handleEnhanced("POST /auth/password-reset/request", requestPasswordReset, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /auth/password-reset", resetPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	handleEnhanced("POST /login/password", loginWithPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	handleEnhanced("POST /login/password", loginWithPassword, handlehttp.AlwaysMapWith(writeSessionCookie(handlehttp.JsonMapper)))
 	handleEnhanced("POST /login/cash", loginCash, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /login/none", loginNone, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /login/nfc", loginNFC, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
