@@ -47,16 +47,16 @@ func verifyRole(role string, next handlehttp.RequestHandler) handlehttp.RequestH
 	return func(r *http.Request) (int, any) {
 		sessionToken := r.Context().Value(ContextKeySessionToken)
 		if sessionToken == nil {
-			return http.StatusUnauthorized, domain_errors.Unauthorized
+			return domain_errors.Unauthorized()
 		}
 
 		s, err := sessionStore.Get(sessionToken.(string))
 		if err != nil || !session.IsValid(&s) {
-			return http.StatusUnauthorized, domain_errors.Unauthorized
+			return domain_errors.Unauthorized()
 		}
 
 		if !users.CheckRole(s.Role, role) {
-			return http.StatusForbidden, domain_errors.Forbidden
+			return domain_errors.Forbidden()
 		}
 
 		return next(r)
