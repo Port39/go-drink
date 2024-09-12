@@ -1,0 +1,25 @@
+{{ define "title" }}
+    GoDrink - Items
+{{end}}
+{{define "content"}}
+    <section>
+        <article>
+            <p>These are the items.</p>
+        <form up-submit method="post" action="/items/add">
+        <fieldset>
+        <label for="name">name</label>
+        <input name="name"></input>
+        <label for="price">price</label>
+        <input name="price"></input>
+        <label for="amount">amount</label>
+        <input name="amount"></input>
+        <button type="submit">Submit</button>
+        </fieldset>
+        </form>
+        {{ range . }}
+        {{ .Name }}<br/>
+        {{ .Price }}
+        {{ end }}
+        </article>
+    </section>
+{{end}}
