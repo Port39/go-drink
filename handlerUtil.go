@@ -63,11 +63,11 @@ func verifyRole(role string, next handlehttp.RequestHandler) handlehttp.RequestH
 	}
 }
 
-//go:embed html-frontend/templates/*.gohtml
+//go:embed html-frontend/**/*.gohtml
 var rawHtmlTemplates embed.FS
 
 func getHtmlTemplates() fs.FS {
-	htmlTemplates, err := fs.Sub(rawHtmlTemplates, "html-frontend/templates")
+	htmlTemplates, err := fs.Sub(rawHtmlTemplates, "html-frontend")
 	if err != nil {
 		panic("HTML Templates not found!")
 	}
@@ -83,6 +83,10 @@ func toJsonOrHtmlByAccept(htmlPath string) handlehttp.GetResponseMapper {
 			Html: handlehttp.HtmlMapper(htmlTemplates, htmlPath),
 		},
 	)
+}
+
+func toHtml(htmlPath string) handlehttp.GetResponseMapper {
+	return handlehttp.AlwaysMapWith(handlehttp.HtmlMapper(htmlTemplates, htmlPath))
 }
 
 var tokenCookieName = "__Host-Token"
