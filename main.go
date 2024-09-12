@@ -87,11 +87,13 @@ func main() {
 
 	initialize()
 
-	handleEnhanced("GET /items", getItems, toJsonOrHtmlByAccept("base.gohtml"))
 	http.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./html-frontend/static"))))
 
 	handleEnhanced("GET /index", noData, toHtml("templates/index.gohtml"))
 	handleEnhanced("GET /", noData, toHtml("templates/index.gohtml"))
+
+	handleEnhanced("GET /items", getItems, toJsonOrHtmlByAccept("templates/items.gohtml"))
+
 	handleEnhanced("GET /items/{id}", getItem, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /items/add", verifyRole("admin", addItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /items/update", verifyRole("admin", updateItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
