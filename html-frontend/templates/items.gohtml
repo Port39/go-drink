@@ -1,25 +1,31 @@
 {{ define "title" }}
-    GoDrink - Items
+GoDrink - Items
 {{end}}
 {{define "content"}}
-    <section>
-        <article>
-            <p>These are the items.</p>
-        <form up-submit method="post" action="/items/add">
+<section>
+    <h2>Add an item to the fridge</h2>
+    <form up-submit method="post" action="/items/add">
         <fieldset>
-        <label for="name">name</label>
-        <input name="name"></input>
-        <label for="price">price</label>
-        <input name="price"></input>
-        <label for="amount">amount</label>
-        <input name="amount"></input>
-        <button type="submit">Submit</button>
+            <label for="name">name</label>
+            <input name="name" type="text" />
+            <label for="price">price</label>
+            <input name="price" type="number" step="0.01" />
+            <label for="amount">amount</label>
+            <input name="amount" type="number" />
         </fieldset>
-        </form>
+        <button type="submit">Add item</button>
+    </form>
+</section>
+<section>
+    <h2>Current items</h2>
+    <p>These are the items currently stocked in the fridge.</p>
+    <ul>
         {{ range . }}
-        {{ .Name }}<br/>
-        {{ .Price }}
+        <li>
+            <p>{{ .Name }}</p>
+            <p>{{ .Price }}</p>
+        </li>
         {{ end }}
-        </article>
-    </section>
+    </ul>
+</section>
 {{end}}
