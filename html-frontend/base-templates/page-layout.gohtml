@@ -1,25 +1,26 @@
 {{ define "base" }}
-    <!DOCTYPE HTML>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{template "title"}}</title>
-        <link rel="stylesheet" type="text/css" href="/static/style.css">
-        <link rel="stylesheet" type="text/css" href="/static/tacit-css-1.8.0.min.css">
-        <link rel="stylesheet" type="text/css" href="/static/unpoly.min.css">
-        <link rel="icon" type="image/svg" href="/static/favicon.svg">
-        <script src="/static/unpoly.min.js"></script>
-        <script defer type="application/ecmascript">
-            up.link.config.followSelectors.push('a[href]')
-            up.link.config.preloadSelectors.push('a[href]')
-            up.fragment.config.navigateOptions.transition = 'cross-fade'
-        </script>
-    </head>
-    <body>
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{template "title"}}</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <link rel="stylesheet" type="text/css" href="/static/bahunya.min.css">
+    <link rel="stylesheet" type="text/css" href="/static/unpoly.min.css">
+    <link rel="icon" type="image/svg" href="/static/favicon.svg">
+    <script src="/static/unpoly.min.js"></script>
+    <script defer type="application/ecmascript">
+        up.link.config.followSelectors.push('a[href]')
+        up.link.config.preloadSelectors.push('a[href]')
+        up.fragment.config.navigateOptions.transition = 'cross-fade'
+    </script>
+</head>
+
+<body>
     <header>
         <nav>
-            <h1>Welcome to this website!</h1>
             <ul>
                 <li><a href="/index">Home</a></li>
                 <li><a href="/items">Items</a></li>
@@ -30,21 +31,22 @@
         {{ template "content" . }}
     </main>
     <footer>
-        <nav>
-            This site is made possible by some very simple and great technologies.
-            <ul>
-                <li>
-                    <a href="https://unpoly.com">Unpoly</a>
-                </li>
-                <li>
-                    <a href="https://github.com/yegor256/tacit">Tacit CSS</a>
-                </li>
-                <li>
-                    <a href="https://go.dev">Go</a>
-                </li>
-            </ul>
-        </nav>
+        <p>
+            The making of this site was greatly simplified by these simply great technologies:
+        </p>
+        <ul>
+            <li>
+                <a href="https://unpoly.com">Unpoly</a>
+            </li>
+            <li>
+                <a href="https://hakanalpay.com/bahunya/index.html">Bahunya CSS</a>
+            </li>
+            <li>
+                <a href="https://go.dev">Go</a>
+            </li>
+        </ul>
     </footer>
-    </body>
-    </html>
+</body>
+
+</html>
 {{end}}
