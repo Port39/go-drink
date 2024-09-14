@@ -10,12 +10,3 @@
     --breakpoint-xxl: 1400px;
 
 }
-
-body {
-    box-sizing: border-box;
-}
-
-header {
-    padding: var(--length-3);
-    margin-bottom: var(--length-2);
-}
