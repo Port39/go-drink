@@ -87,7 +87,7 @@ func main() {
 
 	initialize()
 
-	http.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./html-frontend/static"))))
+	http.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticFiles)))
 
 	handleEnhanced("GET /index", noData, toHtml("templates/index.gohtml"))
 	handleEnhanced("GET /", noData, toHtml("templates/index.gohtml"))

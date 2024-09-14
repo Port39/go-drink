@@ -89,6 +89,19 @@ func toHtml(htmlPath string) handlehttp.GetResponseMapper {
 	return handlehttp.AlwaysMapWith(handlehttp.HtmlMapper(htmlTemplates, htmlPath))
 }
 
+//go:embed html-frontend/static/*
+var rawStaticFiles embed.FS
+
+func getStaticFiles() fs.FS {
+	staticFiles, err := fs.Sub(rawStaticFiles, "html-frontend/static")
+	if err != nil {
+		panic("Static files not found!")
+	}
+	return staticFiles
+}
+
+var staticFiles fs.FS = getStaticFiles()
+
 var tokenCookieName = "__Host-Token"
 
 func writeSessionCookie(mapper handlehttp.ResponseMapper) handlehttp.ResponseMapper {
