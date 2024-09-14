@@ -1,18 +1,29 @@
 {{ define "title" }}
-    Go-Drink - Home
+Go-Drink - Home
 {{end}}
 {{define "content"}}
-    <section>
-        <article>
-            <p>Go-Drink is the official Drink management of Port39!</p>
-            <h2>Login</h2>
-            <form up-submit action="/login/password" method="post">
-                <label for="username">username</label>
-                <input name="username"></input>
+<section>
+    <hgroup>
+        <h1>
+            Go-Drink - stay hydrated.
+        </h1>
+        <p>Go-Drink is the official Drink management of Port39!</p>
+    </hgroup>
+</section>
+<section>
+    <form up-submit action="/login/password" method="post">
+        <fieldset style="display: flex; gap: var(--length-2)">
+            <legend>Login</legend>
+            <div>
+                <label for="username">user name</label>
+                <input type="text" name="username"></input>
+            </div>
+            <div>
                 <label for="password">password</label>
-                <input name="password"></input>
-                <input type="submit">Login</input>
-            </form>
-        </article>
-    </section>
+                <input type="password" name="password"></input>
+            </div>
+            <button type="submit">Login</input>
+        </fieldset>
+    </form>
+</section>
 {{end}}
