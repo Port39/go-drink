@@ -77,16 +77,21 @@ func getHtmlTemplates() fs.FS {
 var htmlTemplates fs.FS = getHtmlTemplates()
 
 func toJsonOrHtmlByAccept(htmlPath string) handlehttp.GetResponseMapper {
-	return handlehttp.MatchByAcceptHeader(
-		handlehttp.ByAccept[handlehttp.ResponseMapper]{
-			Json: handlehttp.JsonMapper,
-			Html: handlehttp.HtmlMapper(htmlTemplates, htmlPath),
-		},
-	)
+	return func(r *http.Request) handlehttp.ResponseMapper {
+		mappersByAccept := handlehttp.ByAccept[handlehttp.GetResponseMapper]{
+			Json: handlehttp.AlwaysMapWith(handlehttp.JsonMapper),
+			Html: toHtml(htmlPath),
+		}
+		responseMapper := handlehttp.MatchByAcceptHeader(mappersByAccept, mappersByAccept.Json)(r)
+		return responseMapper(r)
+	}
 }
 
 func toHtml(htmlPath string) handlehttp.GetResponseMapper {
-	return handlehttp.AlwaysMapWith(handlehttp.HtmlMapper(htmlTemplates, htmlPath))
+	return func(r *http.Request) handlehttp.ResponseMapper {
+		isUnpolyRequest := r.Header.Get("X-Up-Version") != ""
+		return handlehttp.HtmlMapper(htmlTemplates, isUnpolyRequest, htmlPath)
+	}
 }
 
 //go:embed html-frontend/static/*
