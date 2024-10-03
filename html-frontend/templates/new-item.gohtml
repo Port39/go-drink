@@ -1,0 +1,16 @@
+{{ define "title" }}
+    GoDrink - New Item
+{{end}}
+{{define "content"}}
+    <section>
+        <h2>Item added successfully</h2>
+        <p>New item:</p>
+        <ul id="item-list">
+            <li>
+                <p>{{ .Name }}</p>
+                <p>{{ .Price }}</p>
+            </li>
+        </ul>
+        <a href="/items">Return to item list</a>
+    </section>
+{{end}}
