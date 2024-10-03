@@ -1,5 +1,21 @@
 {{define "fragment"}}
-    <main>
-        {{template "content" .}}
-    </main>
+    {{ if hasField . "Type" }}
+        <section id="errors">
+            <hgroup>
+                <h2>
+                    Error encountered
+                </h2>
+                <p>
+                    <strong>{{ .Title }}({{.Status}})</strong>
+                </p>
+            </hgroup>
+            {{ if .Detail}}
+                <p>{{.Detail}}</p>
+            {{end}}
+        </section>
+    {{else}}
+        <main>
+            {{template "content" .}}
+        </main>
+    {{end}}
 {{end}}

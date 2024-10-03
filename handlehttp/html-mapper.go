@@ -5,11 +5,25 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"reflect"
 )
+
+func hasField(v interface{}, name string) bool {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if rv.Kind() != reflect.Struct {
+		return false
+	}
+	return rv.FieldByName(name).IsValid()
+}
 
 func HtmlMapper(tplFS fs.FS, useFragment bool, tplPaths ...string) ResponseMapper {
 	templates := append(tplPaths, "base-templates/page-layout.gohtml", "base-templates/fragment.gohtml")
-	tpl := template.Must(template.ParseFS(tplFS, templates...))
+	tpl := template.Must(template.New("template").Funcs(template.FuncMap{
+		"hasField": hasField,
+	}).ParseFS(tplFS, templates...))
 
 	return func(w http.ResponseWriter, status int, data any) {
 		w.Header().Set("content-type", Html.String())
