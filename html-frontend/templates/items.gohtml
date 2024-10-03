@@ -1,31 +1,35 @@
 {{ define "title" }}
-GoDrink - Items
+    GoDrink - Items
 {{end}}
 {{define "content"}}
-<section>
-    <h2>Add an item to the fridge</h2>
-    <form up-submit method="post" action="/items/add">
-        <fieldset>
-            <label for="name">name</label>
-            <input name="name" type="text" />
-            <label for="price">price</label>
-            <input name="price" type="number" step="0.01" />
-            <label for="amount">amount</label>
-            <input name="amount" type="number" />
-        </fieldset>
-        <button type="submit">Add item</button>
-    </form>
-</section>
-<section>
-    <h2>Current items</h2>
-    <p>These are the items currently stocked in the fridge.</p>
-    <ul>
-        {{ range . }}
-        <li>
-            <p>{{ .Name }}</p>
-            <p>{{ .Price }}</p>
-        </li>
-        {{ end }}
-    </ul>
-</section>
+    <section>
+        <h2>Add an item to the fridge</h2>
+        <form method="post" action="/items/add" up-target="#item-list:after"
+              up-fail-layer="new" up-fail-target="#errors">
+            <fieldset>
+                <label for="name">name
+                    <input name="name" type="text"/>
+                </label>
+                <label for="price">price
+                    <input name="price" type="number" step="0.01"/>
+                </label>
+                <label for="amount">amount
+                    <input name="amount" type="number"/>
+                </label>
+            </fieldset>
+            <button type="submit">Add item</button>
+        </form>
+    </section>
+    <section>
+        <h2>Current items</h2>
+        <p>These are the items currently stocked in the fridge.</p>
+        <ul id="item-list">
+            {{ range . }}
+                <li>
+                    <p>{{ .Name }}</p>
+                    <p>{{ .Price }}</p>
+                </li>
+            {{ end }}
+        </ul>
+    </section>
 {{end}}
