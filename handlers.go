@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"github.com/Port39/go-drink/domain_errors"
 	"github.com/Port39/go-drink/handlehttp"
@@ -17,29 +18,36 @@ import (
 	"time"
 )
 
-var getItems handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+func errorWithContext(ctx context.Context, status int) (context.Context, any) {
+	return handlehttp.ContextWithStatus(ctx, status), domain_errors.ForStatus(status)
+}
+func errorWithContextAndDetail(ctx context.Context, status int, detail string) (context.Context, any) {
+	return handlehttp.ContextWithStatus(ctx, status), domain_errors.ForStatusAndDetail(status, detail)
+}
+
+var getItems handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	allItems, err := items.GetAllItems(r.Context(), database)
 
 	if err != nil {
 		log.Println("Error while retrieving items from database:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
-	return http.StatusOK, allItems
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), allItems
 }
 
-var addItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var addItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	req, err := handlehttp.ReadValidBody[addItemRequest](r)
 
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 
 	_, err = items.GetItemByName(r.Context(), req.Name, database)
 	log.Println(err)
 
 	if err == nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "Item already exists!")
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "Item already exists!")
 	}
 
 	item := items.Item{
@@ -54,22 +62,22 @@ var addItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 
 	if err != nil {
 		log.Println("Error while inserting new item", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
-	return http.StatusCreated, item
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusCreated), item
 }
 
-var updateItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var updateItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	req, err := handlehttp.ReadValidBody[updateItemRequest](r)
 
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 
 	item, err := items.GetItemByName(r.Context(), req.Name, database)
 	if err == nil && item.Id != req.Id {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "an item with this name already exits")
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "an item with this name already exits")
 	}
 	err = items.UpdateItem(r.Context(), &items.Item{
 		Name:    req.Name,
@@ -82,41 +90,41 @@ var updateItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 
 	if err != nil {
 		log.Println("Error while updating item", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
-	return http.StatusOK, item
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), item
 }
 
-var getUsers handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var getUsers handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	allUsers, err := users.GetAllUsers(r.Context(), database)
 	if err != nil {
 		log.Println("Error while retrieving users from database:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
-	return http.StatusOK, allUsers
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), allUsers
 }
 
-var getUsersWithNoneAuth handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var getUsersWithNoneAuth handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	userNames, err := users.GetUsernamesWithNoneAuth(r.Context(), database)
 	if err != nil {
 		log.Println("Error getting list of users with none auth:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
-	return http.StatusOK, userNames
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), userNames
 }
 
-var registerWithPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var registerWithPassword handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	req, err := handlehttp.ReadValidBody[passwordRegistrationRequest](r)
 
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
 
 	_, err = users.GetUserForUsername(r.Context(), req.Username, database)
 	if err == nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "Username already taken")
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "Username already taken")
 	}
 
 	user := users.User{
@@ -131,7 +139,7 @@ var registerWithPassword handlehttp.RequestHandler = func(r *http.Request) (int,
 
 	if err != nil {
 		log.Println("Error while adding user to database:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
 	auth := users.AuthenticationData{
@@ -144,27 +152,27 @@ var registerWithPassword handlehttp.RequestHandler = func(r *http.Request) (int,
 
 	if err != nil {
 		log.Println("Error saving auth:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
-	return http.StatusCreated, user
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusCreated), user
 }
 
-var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	token := r.Context().Value(ContextKeySessionToken)
-	if token == nil {
-		return domain_errors.Unauthorized()
+var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
+	token, hasToken := handlehttp.ContextGetSessionToken(r.Context())
+	if !hasToken {
+		return errorWithContext(r.Context(), http.StatusUnauthorized)
 	}
 
-	sess, err := sessionStore.Get(token.(string))
+	sess, err := sessionStore.Get(token)
 	if err != nil || sess.AuthBackend != "password" {
-		return domain_errors.Unauthorized()
+		return errorWithContext(r.Context(), http.StatusUnauthorized)
 	}
 
 	req, err := handlehttp.ReadValidBody[addAuthMethodRequest](r)
 
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 
 	data, _ := hex.DecodeString(req.Data) // already checked in the validate function
@@ -176,161 +184,164 @@ var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (int, any) {
 	err = users.AddAuthentication(r.Context(), auth, database)
 	if err != nil {
 		log.Println("Error saving auth data:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
-	return http.StatusCreated, nil
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusCreated), nil
 }
 
-var loginWithPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var loginWithPassword handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	req, err := handlehttp.ReadValidBody[passwordLoginRequest](r)
 
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
 
 	user, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err != nil {
-		return domain_errors.Forbidden()
+		return errorWithContext(r.Context(), http.StatusForbidden)
 	}
 	auth, err := users.GetAuthForUser(r.Context(), user.Id, "password", database)
 
 	if err != nil {
 		log.Println("Could not get auth data", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
 	if !users.VerifyPasswordHash(auth.Data, req.Password) {
-		return domain_errors.Forbidden()
+		return errorWithContext(r.Context(), http.StatusForbidden)
 	}
 	sess := session.CreateSession(user.Id, user.Role, auth.Type, config.SessionLifetime)
 	sessionStore.Store(sess)
 
-	return http.StatusOK, loginResponse{
+	ctx := handlehttp.ContextWithSession(r.Context(), sess)
+	ctx = handlehttp.ContextWithStatus(ctx, http.StatusOK)
+
+	return ctx, loginResponse{
 		Token:      sess.Id,
 		ValidUntil: sess.NotValidAfter,
 	}
 }
 
-var loginCash handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var loginCash handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	user, err := users.GetUserForId(r.Context(), users.CASH_USER_ID, database)
 	if err != nil {
 		log.Println("error logging in with cash user:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
 	sess := session.CreateSession(user.Id, "user", "cash", config.SessionLifetime)
 	sessionStore.Store(sess)
 
-	return http.StatusOK, loginResponse{
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), loginResponse{
 		Token:      sess.Id,
 		ValidUntil: sess.NotValidAfter,
 	}
 }
 
-var loginNone handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var loginNone handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	req, err := handlehttp.ReadValidBody[noneLoginRequest](r)
 
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
 
 	user, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err != nil {
-		return domain_errors.Forbidden()
+		return errorWithContext(r.Context(), http.StatusForbidden)
 	}
 	auth, err := users.GetAuthForUser(r.Context(), user.Id, "none", database)
 
 	if err != nil {
 		log.Println("Could not get auth data", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
 	sess := session.CreateSession(user.Id, "user", auth.Type, config.SessionLifetime)
 	sessionStore.Store(sess)
-	return http.StatusOK, loginResponse{
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), loginResponse{
 		Token:      sess.Id,
 		ValidUntil: sess.NotValidAfter,
 	}
 }
 
-var loginNFC handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var loginNFC handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	req, err := handlehttp.ReadValidBody[nfcLoginRequest](r)
 
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
 
 	token, err := hex.DecodeString(req.Token)
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 	user, err := users.GetUserForNFCToken(r.Context(), token, database)
 	if err != nil {
-		return domain_errors.Forbidden()
+		return errorWithContext(r.Context(), http.StatusForbidden)
 	}
 	auth, err := users.GetAuthForUser(r.Context(), user.Id, "nfc", database)
 
 	if err != nil {
 		log.Println("Could not get auth data", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
 	sess := session.CreateSession(user.Id, "user", auth.Type, config.SessionLifetime)
 	sessionStore.Store(sess)
-	return http.StatusOK, loginResponse{
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), loginResponse{
 		Token:      sess.Id,
 		ValidUntil: sess.NotValidAfter,
 	}
 }
 
-var logout handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	token := r.Context().Value(ContextKeySessionToken)
-	if token == nil {
+var logout handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
+	token, hasToken := handlehttp.ContextGetSessionToken(r.Context())
+	if !hasToken {
 		// no session associated with the request, just return gracefully
-		return http.StatusNoContent, nil
+		return handlehttp.ContextWithStatus(r.Context(), http.StatusNoContent), nil
 	}
-	sessionStore.Delete(token.(string))
-	return http.StatusNoContent, nil
+	sessionStore.Delete(token)
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusNoContent), nil
 }
 
-var buyItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	sessionToken := r.Context().Value(ContextKeySessionToken)
-	if sessionToken == nil {
-		return domain_errors.Unauthorized()
+var buyItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
+	token, hasToken := handlehttp.ContextGetSessionToken(r.Context())
+	if !hasToken {
+		return errorWithContext(r.Context(), http.StatusUnauthorized)
 	}
-	s, err := sessionStore.Get(sessionToken.(string))
+	s, err := sessionStore.Get(token)
 	if err != nil || !session.IsValid(&s) {
-		return domain_errors.Unauthorized()
+		return errorWithContext(r.Context(), http.StatusUnauthorized)
 	}
 
 	req, err := handlehttp.ReadValidBody[buyItemRequest](r)
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 
 	item, err := items.GetItemById(r.Context(), req.ItemId, database)
 	if err != nil {
 		log.Println("error getting item:", err)
-		return domain_errors.NotFound()
+		return errorWithContext(r.Context(), http.StatusNotFound)
 	}
 	user, err := users.GetUserForId(r.Context(), s.UserId, database)
 	if err != nil {
 		log.Println("error getting user from session:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 	err = transactions.MakeTransaction(r.Context(), &user, &item, req.Amount, s.AuthBackend, database)
 	if err != nil {
 		log.Println("error while performing transaction", err)
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
-	return http.StatusOK, nil
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), nil
 }
 
-var getTransactions handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var getTransactions handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	since := int64(0)
 	until := time.Now().Unix()
 	if r.URL.Query().Has("since") {
@@ -342,88 +353,88 @@ var getTransactions handlehttp.RequestHandler = func(r *http.Request) (int, any)
 	transac, err := transactions.GetTransactionsSince(r.Context(), since, until, database)
 	if err != nil {
 		log.Println("error while retrieving all transactions:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
-	return http.StatusOK, transac
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), transac
 }
 
-var getItem handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var getItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	idString := strings.TrimPrefix(r.URL.Path, "/items/")
 	id, err := uuid.Parse(idString)
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "invalid item id, uuid expected")
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "invalid item id, uuid expected")
 	}
 	item, err := items.GetItemById(r.Context(), id.String(), database)
 	if err != nil {
-		return domain_errors.NotFound()
+		return errorWithContext(r.Context(), http.StatusNotFound)
 	}
 
-	return http.StatusOK, item
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), item
 }
 
-var getItemByBarcode handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var getItemByBarcode handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	barcodeString := strings.TrimPrefix(r.URL.Path, "/items/barcode/")
 	if !regexp.MustCompile("^[0-9]+$").MatchString(barcodeString) {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "invalid item barcode")
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "invalid item barcode")
 	}
 	item, err := items.GetItemByBarcode(r.Context(), barcodeString, database)
 	if err != nil {
-		return domain_errors.NotFound()
+		return errorWithContext(r.Context(), http.StatusNotFound)
 	}
 
-	return http.StatusOK, item
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), item
 }
 
-var getUser handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var getUser handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	idString := strings.TrimPrefix(r.URL.Path, "/users/")
 	id, err := uuid.Parse(idString)
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "invalid user id, uuid expected")
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "invalid user id, uuid expected")
 	}
 	user, err := users.GetUserForId(r.Context(), id.String(), database)
 	if err != nil {
-		return domain_errors.NotFound()
+		return errorWithContext(r.Context(), http.StatusNotFound)
 	}
-	return http.StatusOK, user
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), user
 }
 
-var changeCredit handlehttp.RequestHandler = func(r *http.Request) (int, any) {
-	token := r.Context().Value(ContextKeySessionToken)
-	if token == nil {
-		return domain_errors.Unauthorized()
+var changeCredit handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
+	token, hasToken := handlehttp.ContextGetSessionToken(r.Context())
+	if !hasToken {
+		return errorWithContext(r.Context(), http.StatusUnauthorized)
 	}
-	sess, err := sessionStore.Get(token.(string))
+	sess, err := sessionStore.Get(token)
 	if err != nil || sess.AuthBackend != "password" {
-		return domain_errors.Unauthorized()
+		return errorWithContext(r.Context(), http.StatusUnauthorized)
 	}
 	user, err := users.GetUserForId(r.Context(), sess.UserId, database)
 	if err != nil {
 		log.Println("Error getting user:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 	req, err := handlehttp.ReadValidBody[changeCreditRequest](r)
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 
 	if user.Credit+req.Diff < 0 {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "lending money is not allowed")
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "lending money is not allowed")
 	}
 	user.Credit += req.Diff
 	err = users.UpdateUser(r.Context(), &user, database)
 	if err != nil {
 		log.Println("Error updating user in database:", err)
-		return domain_errors.InternalServerError()
+		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
-	return http.StatusOK, nil
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), nil
 }
 
-var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	req, err := handlehttp.ReadValidBody[requestPasswordResetRequest](r)
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 
 	// doing things async, so response timing is not affected by the process.
@@ -433,19 +444,19 @@ var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (int,
 			log.Println("Error while trying to send password reset mail:", err)
 		}
 	}()
-	return http.StatusNoContent, nil
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusNoContent), nil
 }
 
-var resetPassword handlehttp.RequestHandler = func(r *http.Request) (int, any) {
+var resetPassword handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	req, err := handlehttp.ReadValidBody[resetPasswordRequest](r)
 	if err != nil {
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, err.Error())
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
 	}
 	err = users.ResetPassword(r.Context(), req.Token, req.Password, database)
 	if err != nil {
 		log.Println("Error resetting password:", err)
-		return domain_errors.ForStatusAndDetail(http.StatusBadRequest, "Error resetting password")
+		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "Error resetting password")
 	}
 
-	return http.StatusCreated, nil
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusCreated), nil
 }
