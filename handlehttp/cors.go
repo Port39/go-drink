@@ -12,9 +12,9 @@ type CorsConfig struct {
 func AddCorsHeader(config CorsConfig, next GetResponseMapper) GetResponseMapper {
 	return func(r *http.Request) ResponseMapper {
 		mapper := next(r)
-		var newMapper ResponseMapper = func(w http.ResponseWriter, status int, data any) {
+		var newMapper ResponseMapper = func(w http.ResponseWriter, input MappingInput) {
 			setCorsHeaders(w, config)
-			mapper(w, status, data)
+			mapper(w, input)
 		}
 		return newMapper
 	}

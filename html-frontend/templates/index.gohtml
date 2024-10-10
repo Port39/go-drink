@@ -1,29 +1,35 @@
 {{ define "title" }}
-Go-Drink - Home
+    Go-Drink - Home
 {{end}}
 {{define "content"}}
-<section>
-    <hgroup>
-        <h1>
-            Go-Drink - stay hydrated.
-        </h1>
-        <p>Go-Drink is the official Drink management of Port39!</p>
-    </hgroup>
-</section>
-<section>
-    <form up-submit action="/login/password" method="post">
-        <fieldset style="display: flex; gap: var(--length-2)">
-            <legend>Login</legend>
-            <div>
-                <label for="username">user name</label>
-                <input type="text" name="username"></input>
-            </div>
-            <div>
-                <label for="password">password</label>
-                <input type="password" name="password"></input>
-            </div>
-            <button type="submit">Login</input>
-        </fieldset>
-    </form>
-</section>
+    <section>
+        <hgroup>
+            <h1>
+                Go-Drink - stay hydrated.
+            </h1>
+            <p>Go-Drink is the official Drink management of Port39!</p>
+        </hgroup>
+    </section>
+    <section>
+        {{if .Ctx.HasSession }}
+            You are logged in as {{.Ctx.Session.Role}}
+        {{else}}
+            <form up-target="main" action="/login/password" method="post"
+                  up-fail-layer="new" up-fail-target="#errors"
+            >
+                <fieldset style="display: flex; gap: var(--length-2)">
+                    <legend>Login</legend>
+                    <div>
+                        <label for="username">user name
+                            <input type="text" name="username"></label>
+                    </div>
+                    <div>
+                        <label for="password">password
+                            <input type="password" name="password"></label>
+                    </div>
+                    <button type="submit">Login</button>
+                </fieldset>
+            </form>
+        {{end}}
+    </section>
 {{end}}

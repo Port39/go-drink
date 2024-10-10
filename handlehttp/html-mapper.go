@@ -25,14 +25,14 @@ func HtmlMapper(tplFS fs.FS, useFragment bool, tplPaths ...string) ResponseMappe
 		"hasField": hasField,
 	}).ParseFS(tplFS, templates...))
 
-	return func(w http.ResponseWriter, status int, data any) {
+	return func(w http.ResponseWriter, input MappingInput) {
 		w.Header().Set("content-type", Html.String())
-		w.WriteHeader(status)
+		w.WriteHeader(input.Ctx.Status)
 		var err error
 		if useFragment {
-			err = executeFragmentTemplate(w, tpl, data)
+			err = executeFragmentTemplate(w, tpl, input)
 		} else {
-			err = executeWholePageTemplate(w, tpl, data)
+			err = executeWholePageTemplate(w, tpl, input)
 		}
 
 		if err != nil {

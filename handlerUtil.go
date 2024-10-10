@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"io/fs"
+	"log"
 	"net/http"
 	"strings"
 
@@ -13,11 +14,9 @@ import (
 	"github.com/Port39/go-drink/users"
 )
 
-const ContextKeySessionToken = "SESSION_TOKEN"
-
 func enrichRequestContext(next handlehttp.RequestHandler) handlehttp.RequestHandler {
-	return func(r *http.Request) (int, any) {
-		var token string = ""
+	return func(r *http.Request) (context.Context, any) {
+		var token = ""
 
 		authCookie, _ := r.Cookie(tokenCookieName)
 
@@ -39,24 +38,29 @@ func enrichRequestContext(next handlehttp.RequestHandler) handlehttp.RequestHand
 			token = split[1]
 		}
 
-		return next(r.Clone(context.WithValue(r.Context(), ContextKeySessionToken, token)))
+		ctx := r.Context()
+
+		s, err := sessionStore.Get(token)
+		if err == nil && session.IsValid(&s) {
+			ctx = handlehttp.ContextWithSession(ctx, s)
+			ctx = handlehttp.ContextWithSessionToken(ctx, token)
+		}
+
+		return next(r.Clone(ctx))
 	}
 }
 
 func verifyRole(role string, next handlehttp.RequestHandler) handlehttp.RequestHandler {
-	return func(r *http.Request) (int, any) {
-		sessionToken := r.Context().Value(ContextKeySessionToken)
-		if sessionToken == nil {
-			return domain_errors.Unauthorized()
-		}
-
-		s, err := sessionStore.Get(sessionToken.(string))
-		if err != nil || !session.IsValid(&s) {
-			return domain_errors.Unauthorized()
+	return func(r *http.Request) (context.Context, any) {
+		s, hasSession := handlehttp.ContextGetSession(r.Context())
+		if !hasSession {
+			log.Println("Rejecting request due to lacking session.")
+			return handlehttp.ContextWithStatus(r.Context(), http.StatusUnauthorized), domain_errors.ForStatus(http.StatusUnauthorized)
 		}
 
 		if !users.CheckRole(s.Role, role) {
-			return domain_errors.Forbidden()
+			log.Println("Rejecting request due to lacking role.")
+			return handlehttp.ContextWithStatus(r.Context(), http.StatusForbidden), domain_errors.ForStatus(http.StatusForbidden)
 		}
 
 		return next(r)
@@ -74,7 +78,7 @@ func getHtmlTemplates() fs.FS {
 	return htmlTemplates
 }
 
-var htmlTemplates fs.FS = getHtmlTemplates()
+var htmlTemplates = getHtmlTemplates()
 
 func toJsonOrHtmlByAccept(htmlPath string) handlehttp.GetResponseMapper {
 	return func(r *http.Request) handlehttp.ResponseMapper {
@@ -105,19 +109,22 @@ func getStaticFiles() fs.FS {
 	return staticFiles
 }
 
-var staticFiles fs.FS = getStaticFiles()
+var staticFiles = getStaticFiles()
 
 var tokenCookieName = "__Host-Token"
 
-func writeSessionCookie(mapper handlehttp.ResponseMapper) handlehttp.ResponseMapper {
-	return func(w http.ResponseWriter, status int, data any) {
-		switch d := data.(type) {
-		case loginResponse:
-			token := d.Token
-			w.Header().Set("Set-Cookie", tokenCookieName+"="+token+";Secure;Same-Site=Strict;HttpOnly;Path=/")
-		default:
+func writeSessionCookie(getMapper handlehttp.GetResponseMapper) handlehttp.GetResponseMapper {
+	return func(r *http.Request) handlehttp.ResponseMapper {
+		return func(w http.ResponseWriter, input handlehttp.MappingInput) {
+			switch d := input.Data.(type) {
+			case loginResponse:
+				token := d.Token
+				w.Header().Set("Set-Cookie", tokenCookieName+"="+token+";Secure;Same-Site=Strict;HttpOnly;Path=/")
+			default:
+			}
+			mapper := getMapper(r)
+			mapper(w, input)
 		}
-		mapper(w, status, data)
 	}
 }
 

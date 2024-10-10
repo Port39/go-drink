@@ -83,12 +83,11 @@ func initialize() {
 	}()
 }
 
-var noData handlehttp.RequestHandler = func(_ *http.Request) (int, any) {
-	return 200, nil
+var noData handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), nil
 }
 
 func main() {
-
 	initialize()
 
 	http.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticFiles)))
@@ -113,7 +112,7 @@ func main() {
 	handleEnhanced("POST /auth/password-reset/request", requestPasswordReset, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /auth/password-reset", resetPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	handleEnhanced("POST /login/password", loginWithPassword, handlehttp.AlwaysMapWith(writeSessionCookie(handlehttp.JsonMapper)))
+	handleEnhanced("POST /login/password", loginWithPassword, writeSessionCookie(toJsonOrHtmlByAccept("templates/index.gohtml")))
 	handleEnhanced("POST /login/cash", loginCash, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /login/none", loginNone, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /login/nfc", loginNFC, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
