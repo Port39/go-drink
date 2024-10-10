@@ -28,6 +28,7 @@ var AllowedMediaTypes = []contenttype.MediaType{
 	Html, Json,
 }
 
+// MatchByAcceptHeader
 // Match the most appropriate choice in elementsByAccept based on the request's accept header
 func MatchByAcceptHeader[T any](elementsByAccept ByAccept[T], defaultElement T) func(r *http.Request) T {
 	return func(r *http.Request) T {

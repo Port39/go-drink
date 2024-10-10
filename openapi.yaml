@@ -190,7 +190,7 @@ paths:
                   description: a valid email address
                 password:
                   type: string
-                  description: the password of the new user. Must have a shannon entropy > 0.4 and a hibp check must come back negative.
+                  description: the password of the new user. Must have a shannon entropy > 0.4 and a HIBP check must come back negative.
       responses:
         201:
           description: If the registration was successful, no data is returned
@@ -213,7 +213,7 @@ paths:
                   description: either "none" or "nfc"
                 data:
                   type: string
-                  description: if method is nfc, data must be a hexstring
+                  description: if method is nfc, data must be a hex string
       responses:
         200:
           description: if the method was added successfully, no data is returned
@@ -235,7 +235,7 @@ paths:
               properties:
                 username:
                   type: string
-                  description: the username for which the password should be reseted
+                  description: the username for which the password should be reset
       responses:
         204:
           description: If a valid request was made, no data is returned. Note that this response status neither confirms that an email was sent, nor that the specified user exists
@@ -258,7 +258,7 @@ paths:
                   description: A valid uuid. It can be requested using the /auth/password-reset/request endpoint
                 password:
                   type: string
-                  description: The new password for the user. Must have a shannon entropy > 0.4 and a hibp check must come back negative.
+                  description: The new password for the user. Must have a shannon entropy > 0.4 and a HIBP check must come back negative.
       responses:
         201:
           description: The password for the user associated with the reset token has been updated successfully.
@@ -408,7 +408,7 @@ paths:
                       description: how many items were bought
                     authBackend:
                       type: string
-                      description: the authentication emthod that was used when the transaction took place
+                      description: the authentication method that was used when the transaction took place
                     timestamp:
                       type: integer
                       description: the unix timestamp at which the transaction took place

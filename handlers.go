@@ -225,7 +225,7 @@ var loginWithPassword handlehttp.RequestHandler = func(r *http.Request) (context
 }
 
 var loginCash handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	user, err := users.GetUserForId(r.Context(), users.CASH_USER_ID, database)
+	user, err := users.GetUserForId(r.Context(), users.CashUserId, database)
 	if err != nil {
 		log.Println("error logging in with cash user:", err)
 		return errorWithContext(r.Context(), http.StatusInternalServerError)
