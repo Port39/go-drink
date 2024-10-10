@@ -4,6 +4,7 @@ import (
 	"net/http"
 )
 
+// ProblemDetail
 // See https://www.rfc-editor.org/rfc/rfc7807
 type ProblemDetail struct {
 	Type     string `json:"type"`

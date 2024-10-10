@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-const CASH_USER_ID = "00000000-0000-0000-0000-000000000000"
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000001"
+const CashUserId = "00000000-0000-0000-0000-000000000000"
+const AdminUserId = "00000000-0000-0000-0000-000000000001"
 
 type User struct {
 	Id       string `json:"id"`
@@ -26,7 +26,7 @@ type User struct {
 }
 
 func (u *User) IsCashUser() bool {
-	return u.Id == CASH_USER_ID
+	return u.Id == CashUserId
 }
 
 type AuthenticationData struct {
@@ -90,17 +90,17 @@ func VerifyUsersTableExists(db *sql.DB) error {
 
 func VerifyCashUserExists(db *sql.DB) error {
 	_, err := db.Exec(`INSERT INTO users (id, username, email, role, credit) 
-	VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, CASH_USER_ID, "CASH PAYMENTS", "cash@localhost", "user", 65535)
+	VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, CashUserId, "CASH PAYMENTS", "cash@localhost", "user", 65535)
 	return err
 }
 
 func VerifyAdminUserExists(db *sql.DB) error {
 	_, err := db.Exec(`INSERT INTO users (id, username, email, role, credit) 
-	VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, ADMIN_USER_ID, "admin", "admin@localhost", "admin", 0)
+	VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, AdminUserId, "admin", "admin@localhost", "admin", 0)
 	password := uuid.New()
 	log.Println(`"admin" user registered with password: "` + password.String() + `" (without quotes)`)
 	_, err = db.Exec(`INSERT INTO auth (user_id, type, data) 
-	VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, ADMIN_USER_ID, "password", CalculatePasswordHash(password.String()))
+	VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, AdminUserId, "password", CalculatePasswordHash(password.String()))
 	return err
 }
 
@@ -218,8 +218,8 @@ func AddAuthenticationWithTransaction(ctx context.Context, auth AuthenticationDa
 	return err
 }
 
-func GetAuthForUser(ctx context.Context, id, authtype string, db *sql.DB) (AuthenticationData, error) {
-	result, err := db.QueryContext(ctx, "SELECT user_id, type, data FROM auth WHERE user_id = $1 AND type = $2", id, authtype)
+func GetAuthForUser(ctx context.Context, id, authType string, db *sql.DB) (AuthenticationData, error) {
+	result, err := db.QueryContext(ctx, "SELECT user_id, type, data FROM auth WHERE user_id = $1 AND type = $2", id, authType)
 	if err != nil {
 		return AuthenticationData{}, err
 	}
@@ -288,7 +288,7 @@ func SendPasswordResetMail(username string, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	if user.Id == CASH_USER_ID {
+	if user.Id == CashUserId {
 		return nil
 	}
 	token, err := addPasswordResetToken(ctx, &user, db)

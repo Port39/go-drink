@@ -102,14 +102,14 @@ func TestCashUser(t *testing.T) {
 	testutils.FailOnError(VerifyUsersTableExists(db), t)
 
 	// In an empty database, no cash user should be available
-	_, err := GetUserForId(ctx, CASH_USER_ID, db)
+	_, err := GetUserForId(ctx, CashUserId, db)
 	if err == nil || err.Error() != "no such user" {
 		t.Fatal("Cash user exists, even though it wasn't created!")
 	}
 
 	// Create a cash user and verify their existence
 	testutils.FailOnError(VerifyCashUserExists(db), t)
-	cashUser, err := GetUserForId(ctx, CASH_USER_ID, db)
+	cashUser, err := GetUserForId(ctx, CashUserId, db)
 	testutils.FailOnError(err, t)
 	testutils.ExpectSuccess(cashUser.IsCashUser(), t)
 
@@ -356,7 +356,7 @@ func TestSendPasswordResetMail(t *testing.T) {
 	testutils.FailOnError(VerifyCashUserExists(db), t)
 	testutils.FailOnError(VerifyPasswordResetTableExists(db), t)
 
-	cashuser, err := GetUserForId(ctx, CASH_USER_ID, db)
+	cashuser, err := GetUserForId(ctx, CashUserId, db)
 	testutils.FailOnError(err, t)
 
 	err = SendPasswordResetMail(cashuser.Username, db)
