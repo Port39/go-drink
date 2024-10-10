@@ -15,6 +15,7 @@ import (
 )
 
 const CASH_USER_ID = "00000000-0000-0000-0000-000000000000"
+const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 type User struct {
 	Id       string `json:"id"`
@@ -90,6 +91,16 @@ func VerifyUsersTableExists(db *sql.DB) error {
 func VerifyCashUserExists(db *sql.DB) error {
 	_, err := db.Exec(`INSERT INTO users (id, username, email, role, credit) 
 	VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, CASH_USER_ID, "CASH PAYMENTS", "cash@localhost", "user", 65535)
+	return err
+}
+
+func VerifyAdminUserExists(db *sql.DB) error {
+	_, err := db.Exec(`INSERT INTO users (id, username, email, role, credit) 
+	VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, ADMIN_USER_ID, "admin", "admin@localhost", "admin", 0)
+	password := uuid.New()
+	log.Println(`"admin" user registered with password: "` + password.String() + `" (without quotes)`)
+	_, err = db.Exec(`INSERT INTO auth (user_id, type, data) 
+	VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, ADMIN_USER_ID, "password", CalculatePasswordHash(password.String()))
 	return err
 }
 

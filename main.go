@@ -43,6 +43,10 @@ func initialize() {
 	if err != nil {
 		log.Fatal("Error creating auth table: ", err)
 	}
+	err = users.VerifyAdminUserExists(database)
+	if err != nil {
+		log.Fatal("Error creating admin user: ", err)
+	}
 	err = users.VerifyPasswordResetTableExists(database)
 	if err != nil {
 		log.Fatal("Error creating password reset token table: ", err)
