@@ -1,7 +1,10 @@
 package domain_errors
 
-import "net/http"
+import (
+	"net/http"
+)
 
+// ProblemDetail
 // See https://www.rfc-editor.org/rfc/rfc7807
 type ProblemDetail struct {
 	Type     string `json:"type"`
@@ -25,21 +28,16 @@ type ValidationProblemDetail struct {
 	Field string `json:"field"`
 }
 
-func ForStatus(status int) (int, ProblemDetail) {
-	return status, ProblemDetail{
+func ForStatus(status int) ProblemDetail {
+	return ProblemDetail{
 		Type:   DefaultProblemType,
 		Title:  http.StatusText(status),
-		Status: int(status),
+		Status: status,
 	}
 }
 
-func Unauthorized() (int, ProblemDetail)        { return ForStatus(http.StatusUnauthorized) }
-func Forbidden() (int, ProblemDetail)           { return ForStatus(http.StatusForbidden) }
-func InternalServerError() (int, ProblemDetail) { return ForStatus(http.StatusInternalServerError) }
-func NotFound() (int, ProblemDetail)            { return ForStatus(http.StatusNotFound) }
-
-func ForStatusAndDetail(status int, detail string) (int, ProblemDetail) {
-	status, result := ForStatus(status)
+func ForStatusAndDetail(status int, detail string) ProblemDetail {
+	result := ForStatus(status)
 	result.Detail = detail
-	return status, result
+	return result
 }

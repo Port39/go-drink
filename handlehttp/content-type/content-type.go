@@ -1,5 +1,6 @@
+// Package contenttype
 // originally from "github.com/elnormous/contenttype"
-// Package contenttype implements HTTP Content-Type and Accept header parsers.
+// implements HTTP Content-Type and Accept header parsers.
 package contenttype
 
 import (
@@ -405,7 +406,7 @@ func GetAcceptableMediaType(request *http.Request, availableMediaTypes []MediaTy
 	return GetAcceptableMediaTypeFromHeader(acceptHeaders[0], availableMediaTypes)
 }
 
-// GetAcceptableMediaTypeFromHeader chooses a media type from available media types according to the specified Accept header value.
+// GetAcceptableMediaTypeFromHeader chooses a media type from available media types according to the specified "Accept" header value.
 // Returns the most suitable media type or an error if no type can be selected.
 func GetAcceptableMediaTypeFromHeader(headerValue string, availableMediaTypes []MediaType) (MediaType, Parameters, error) {
 	s := headerValue

@@ -14,14 +14,14 @@ import (
 
 var (
 	// selection of pre-defined values used for testing
-	instEmpty        contenttype.MediaType = contenttype.MediaType{}
-	instSimple       contenttype.MediaType = contenttype.NewMediaType("text/plain")
-	instWildcard     contenttype.MediaType = contenttype.NewMediaType("*/*")
-	instTextWildcard contenttype.MediaType = contenttype.NewMediaType("text/*")
-	instParams       contenttype.MediaType = contenttype.NewMediaType("application/json; q=0.001; charset=utf-8")
-	instJSON         contenttype.MediaType = contenttype.NewMediaType("application/json")
-	instJSON2        contenttype.MediaType = contenttype.NewMediaType("application/json; charset=utf-8")
-	instAppWildcard  contenttype.MediaType = contenttype.NewMediaType("application/*")
+	instEmpty        = contenttype.MediaType{}
+	instSimple       = contenttype.NewMediaType("text/plain")
+	instWildcard     = contenttype.NewMediaType("*/*")
+	instTextWildcard = contenttype.NewMediaType("text/*")
+	instParams       = contenttype.NewMediaType("application/json; q=0.001; charset=utf-8")
+	instJSON         = contenttype.NewMediaType("application/json")
+	instJSON2        = contenttype.NewMediaType("application/json; charset=utf-8")
+	instAppWildcard  = contenttype.NewMediaType("application/*")
 )
 
 func TestNewMediaType(t *testing.T) {
@@ -433,7 +433,7 @@ func TestMediaType_Equal(t *testing.T) {
 		b    contenttype.MediaType
 		want bool
 	}
-	tests := []test{}
+	var tests []test
 
 	// create permutation
 	for outerName, outerMt := range mtut {

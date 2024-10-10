@@ -19,7 +19,8 @@ Accept: application/json
     })
 %}
 
-GET {{godrink_url}}/items
+###
+GET{{godrink_url}}/items
 
 > {%
     client.test("returns 200", () => {

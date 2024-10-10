@@ -1,18 +1,24 @@
 package handlehttp
 
 import (
+	"context"
 	"net/http"
 )
 
 type RequestResponseHandler func(w http.ResponseWriter, r *http.Request)
-type RequestHandler func(r *http.Request) (status int, result any)
-type ResponseMapper func(w http.ResponseWriter, status int, data any)
-type GetResponseMapper func(r *http.Request) *ResponseMapper
+type RequestHandler func(r *http.Request) (updatedContext context.Context, result any)
+type MappingInput struct {
+	Data any
+	Ctx  ContextStruct
+}
+type ResponseMapper func(w http.ResponseWriter, input MappingInput)
+type GetResponseMapper func(r *http.Request) ResponseMapper
 
 func AlwaysMapWith(mapper ResponseMapper) GetResponseMapper {
-	return func(r *http.Request) *ResponseMapper { return &mapper }
+	return func(r *http.Request) ResponseMapper { return mapper }
 }
 
+// MappingResultOf
 // Get a RequestResponseHandler by mapping the result of the RequestHandler using the ResponseMapper
 func MappingResultOf(handler RequestHandler, getMapper GetResponseMapper) RequestResponseHandler {
 	if handler == nil || getMapper == nil {
@@ -23,11 +29,10 @@ func MappingResultOf(handler RequestHandler, getMapper GetResponseMapper) Reques
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		mapper := getMapper(r)
-		if mapper == nil || *mapper == nil {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		status, result := (handler)(r)
-		(*mapper)(w, status, result)
+		ctx, result := (handler)(r)
+		(mapper)(w, MappingInput{
+			Data: result,
+			Ctx:  CtxToStruct(ctx),
+		})
 	}
 }

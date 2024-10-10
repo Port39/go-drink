@@ -1,6 +1,7 @@
 package handlehttp
 
 import (
+	"log"
 	"net/http"
 
 	contenttype "github.com/Port39/go-drink/handlehttp/content-type"
@@ -27,23 +28,25 @@ var AllowedMediaTypes = []contenttype.MediaType{
 	Html, Json,
 }
 
+// MatchByAcceptHeader
 // Match the most appropriate choice in elementsByAccept based on the request's accept header
-func MatchByAcceptHeader[T any](elementsByAccept ByAccept[T]) func(r *http.Request) *T {
-	return func(r *http.Request) *T {
+func MatchByAcceptHeader[T any](elementsByAccept ByAccept[T], defaultElement T) func(r *http.Request) T {
+	return func(r *http.Request) T {
 		result, _, err := contenttype.GetAcceptableMediaTypeFromHeader(r.Header.Get("Accept"), AllowedMediaTypes)
 
 		if err != nil {
-			return nil
+			log.Println("Accept header", r.Header.Get("Accept"), "=>", result, err)
+			return defaultElement
 		}
 
 		if Html.Equal(result) {
-			return &elementsByAccept.Html
+			return elementsByAccept.Html
 		}
 
 		if Json.Equal(result) {
-			return &elementsByAccept.Json
+			return elementsByAccept.Json
 		}
 
-		return nil
+		return defaultElement
 	}
 }

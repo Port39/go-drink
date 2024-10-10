@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// The SQLITE_DRIVER value comes from modernc.org/sqlite/sqlite.driverName
-const SQLITE_DRIVER = "sqlite"
+// The SqliteDriver value comes from modernc.org/sqlite/sqlite.driverName
+const SqliteDriver = "sqlite"
 
 type Config struct {
 	DbDriver           string
@@ -46,12 +46,12 @@ func mkconf() Config {
 		log.Println("##############################################################")
 		log.Println("# Caution: NO DATA WILL PERSIST ACROSS APPLICATION RESTARTS! #")
 		log.Println("##############################################################")
-		dbdriver = SQLITE_DRIVER
+		dbdriver = SqliteDriver
 		dbUrl = "file::memory:?cache=shared"
 	} else {
 		dbdriver = strings.ToLower(dbdriver)
 		if !dbUrlExists {
-			if dbdriver == SQLITE_DRIVER {
+			if dbdriver == SqliteDriver {
 				dbUrl = "file::memory:?cache=shared"
 			} else {
 				log.Fatalf("The database driver (%s) requires specifying a connection string!", dbdriver)
