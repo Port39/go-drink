@@ -14,6 +14,9 @@
             up.link.config.followSelectors.push('a[href]')
             up.link.config.preloadSelectors.push('a[href]')
             up.fragment.config.navigateOptions.transition = 'cross-fade'
+            up.compiler('[up-flashes] > *', function(message) {
+                setTimeout(() => up.destroy(message), 5000)
+            })
         </script>
     </head>
     <body>
@@ -23,6 +26,8 @@
                 <li><a href="/index">Home</a></li>
                 <li><a href="/items">Items</a></li>
             </ul>
+            <span up-flashes up-anchored="right">
+            </span>
         </nav>
     </header>
     {{ template "fragment" . }}
