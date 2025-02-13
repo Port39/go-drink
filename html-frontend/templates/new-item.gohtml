@@ -1,18 +1,31 @@
 {{ define "title" }}
     GoDrink - New Item
-{{end}}
-{{define "content"}}
-    {{with .Data}}
+{{ end }}
+{{ define "content" }}
+    {{ with .Data }}
         <section>
-            <h2 up-flashes><span>Item added successfully</span></h2>
             <p>New item:</p>
-            <ul id="item-list">
-                <li>
-                    <p>{{ .Name }}</p>
-                    <p>{{ .Price }}</p>
-                </li>
-            </ul>
+            <table id="item-table">
+                <thead>
+                    <tr>
+                        <th>name</th>
+                        <th>price</th>
+                        <th>amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ .Name }}</td>
+                        <td>{{ .Price }}</td>
+                        <td>{{ .Amount }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            {{ template "new-item-form" . }}
             <a href="/items">Return to item list</a>
+            <section id="alerts-container" up-flashes up-transition="cross-fade">
+                <div class="alert-success"><strong>Item added successfully</strong></div>
+            </section>
         </section>
-    {{end}}
-{{end}}
+    {{ end }}
+{{ end }}
