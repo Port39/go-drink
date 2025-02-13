@@ -31,7 +31,6 @@ func WriteAsJson(w http.ResponseWriter, input MappingInput) {
 			log.Println("Error writing response", err)
 		}
 	}
-
 }
 
 var JsonMapper ResponseMapper = WriteAsJson

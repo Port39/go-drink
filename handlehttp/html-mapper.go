@@ -20,7 +20,7 @@ func hasField(v interface{}, name string) bool {
 }
 
 func HtmlMapper(tplFS fs.FS, useFragment bool, tplPaths ...string) ResponseMapper {
-	templates := append(tplPaths, "base-templates/page-layout.gohtml", "base-templates/fragment.gohtml")
+	templates := append(tplPaths, "base-templates/*.gohtml", "component-templates/*.gohtml")
 	tpl := template.Must(template.New("template").Funcs(template.FuncMap{
 		"hasField": hasField,
 	}).ParseFS(tplFS, templates...))
