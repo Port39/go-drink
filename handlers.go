@@ -3,6 +3,13 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"log"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/Port39/go-drink/domain_errors"
 	"github.com/Port39/go-drink/handlehttp"
 	"github.com/Port39/go-drink/items"
@@ -10,12 +17,6 @@ import (
 	"github.com/Port39/go-drink/transactions"
 	"github.com/Port39/go-drink/users"
 	"github.com/google/uuid"
-	"log"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func errorWithContext(ctx context.Context, status int) (context.Context, any) {
@@ -300,11 +301,9 @@ var loginNFC handlehttp.RequestHandler = func(r *http.Request) (context.Context,
 
 var logout handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	token, hasToken := handlehttp.ContextGetSessionToken(r.Context())
-	if !hasToken {
-		// no session associated with the request, just return gracefully
-		return handlehttp.ContextWithStatus(r.Context(), http.StatusNoContent), nil
+	if hasToken {
+		sessionStore.Delete(token)
 	}
-	sessionStore.Delete(token)
 	return handlehttp.ContextWithStatus(r.Context(), http.StatusNoContent), nil
 }
 
