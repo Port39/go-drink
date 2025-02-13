@@ -94,7 +94,8 @@ func toJsonOrHtmlByAccept(htmlPath string) handlehttp.GetResponseMapper {
 func toHtml(htmlPath string) handlehttp.GetResponseMapper {
 	return func(r *http.Request) handlehttp.ResponseMapper {
 		isUnpolyRequest := r.Header.Get("X-Up-Version") != ""
-		return handlehttp.HtmlMapper(htmlTemplates, isUnpolyRequest, htmlPath)
+		wantsFullHtml := r.Header.Get("X-Up-Target") == "html"
+		return handlehttp.HtmlMapper(htmlTemplates, isUnpolyRequest && !wantsFullHtml, htmlPath)
 	}
 }
 
