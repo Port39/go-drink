@@ -1,52 +1,52 @@
 {{ define "base" }}
-    <!DOCTYPE HTML>
+    <!DOCTYPE html>
     <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{template "title"}}</title>
-        <link rel="stylesheet" type="text/css" href="/static/style.css">
-        <link rel="stylesheet" type="text/css" href="/static/bahunya.min.css">
-        <link rel="stylesheet" type="text/css" href="/static/unpoly.min.css">
-        <link rel="icon" type="image/svg" href="/static/favicon.svg">
-        <script src="/static/unpoly.min.js"></script>
-        <script defer type="application/ecmascript">
-            up.link.config.followSelectors.push('a[href]')
-            up.link.config.preloadSelectors.push('a[href]')
-            up.fragment.config.navigateOptions.transition = 'cross-fade'
-            up.compiler('[up-flashes] > *', function(message) {
-                setTimeout(() => up.destroy(message), 5000)
-            })
-        </script>
-    </head>
-    <body>
-    <header>
-        <nav>
-            <ul>
-                <li><a href="/index">Home</a></li>
-                <li><a href="/items">Items</a></li>
-            </ul>
-            <span up-flashes up-anchored="right">
-            </span>
-        </nav>
-    </header>
-    {{ template "fragment" . }}
-    <footer>
-        <p>
-            The making of this site was greatly simplified by these simply great technologies:
-        </p>
-        <ul>
-            <li>
-                <a href="https://unpoly.com">Unpoly</a>
-            </li>
-            <li>
-                <a href="https://hakanalpay.com/bahunya/index.html">Bahunya CSS</a>
-            </li>
-            <li>
-                <a href="https://go.dev">Go</a>
-            </li>
-        </ul>
-    </footer>
-    </body>
+        <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>{{ template "title" }}</title>
+            <link rel="stylesheet" type="text/css" href="/static/bahunya.min.css" />
+            <link rel="stylesheet" type="text/css" href="/static/unpoly.min.css" />
+            <link rel="stylesheet" type="text/css" href="/static/style.css" />
+            <link rel="icon" type="image/svg" href="/static/favicon.svg" />
+            <script src="/static/unpoly.min.js"></script>
+            <script defer type="application/ecmascript">
+                up.link.config.followSelectors.push('a[href]')
+                up.history.config.restoreTargets = ["main"]
+                up.link.config.preloadSelectors.push('a[href]')
+                up.compiler('[up-flashes] > *', function(message) {
+                    setTimeout(() => up.destroy(message), 5000)
+                })
+            </script>
+        </head>
+        <body>
+            <header>
+                <nav up-nav>
+                    <ul>
+                        <li><a href="/index">Home</a></li>
+                        <li><a href="/items">Items</a></li>
+                        <li>
+                            {{ template "login-component" . }}
+                        </li>
+                    </ul>
+                </nav>
+            </header>
+            {{ template "fragment" . }}
+            <section id="alerts-container" up-flashes><div></div></section>
+            <footer>
+                <p>The making of this site was greatly simplified by these simply great technologies:</p>
+                <ul style="display: flex; flex-direction: row; justify-content: space-evenly;">
+                    <li>
+                        <a href="https://unpoly.com">Unpoly</a>
+                    </li>
+                    <li>
+                        <a href="https://hakanalpay.com/bahunya/index.html">Bahunya CSS</a>
+                    </li>
+                    <li>
+                        <a href="https://go.dev">Go</a>
+                    </li>
+                </ul>
+            </footer>
+        </body>
     </html>
-{{end}}
+{{ end }}

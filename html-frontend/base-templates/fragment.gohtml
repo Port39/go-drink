@@ -1,23 +1,21 @@
-{{define "fragment"}}
+{{ define "fragment" }}
     <main>
         {{ if .Ctx.HasError }}
-            {{with .Data}}
+            {{ with .Data }}
                 <section id="errors">
                     <hgroup>
-                        <h2>
-                            Error encountered
-                        </h2>
+                        <h2>Error encountered</h2>
                         <p>
-                            <strong>{{ .Title }}({{.Status}})</strong>
+                            <strong>{{ .Title }}({{ .Status }})</strong>
                         </p>
                     </hgroup>
-                    {{ if .Detail}}
-                        <p>{{.Detail}}</p>
-                    {{end}}
+                    {{ if .Detail }}
+                        <p>{{ .Detail }}</p>
+                    {{ end }}
                 </section>
-            {{end}}
-        {{else}}
-            {{template "content" .}}
-        {{end}}
+            {{ end }}
+        {{ else }}
+            {{ template "content" . }}
+        {{ end }}
     </main>
-{{end}}
+{{ end }}
