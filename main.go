@@ -4,6 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"net/http"
+	"time"
+
 	"github.com/Port39/go-drink/handlehttp"
 	"github.com/Port39/go-drink/items"
 	"github.com/Port39/go-drink/mailing"
@@ -11,10 +15,7 @@ import (
 	"github.com/Port39/go-drink/transactions"
 	"github.com/Port39/go-drink/users"
 	_ "github.com/lib/pq"
-	"log"
 	_ "modernc.org/sqlite"
-	"net/http"
-	"time"
 )
 
 var database *sql.DB
@@ -94,6 +95,7 @@ func main() {
 
 	handleEnhanced("GET /index", noData, toHtml("templates/index.gohtml"))
 	handleEnhanced("GET /", noData, toHtml("templates/index.gohtml"))
+	handleEnhanced("GET /login", noData, toHtml("templates/login.gohtml"))
 
 	handleEnhanced("GET /items", getItems, toJsonOrHtmlByAccept("templates/items.gohtml"))
 

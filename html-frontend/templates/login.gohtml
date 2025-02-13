@@ -1,0 +1,22 @@
+{{ define "title" }}
+    GoDrink - Login
+{{ end }}
+{{ define "content" }}
+    {{ if .Ctx.HasSession }}
+        You are logged in as
+        {{ .Ctx.Session.Role }}
+    {{ else }}
+        <form up-submit="false" action="/login/password" method="post">
+            <fieldset style="display: flex; gap: var(--length-2)">
+                <legend>Login</legend>
+                <div>
+                    <label for="username">user name <input type="text" name="username" /></label>
+                </div>
+                <div>
+                    <label for="password">password <input type="password" name="password" /></label>
+                </div>
+                <button type="submit">Login</button>
+            </fieldset>
+        </form>
+    {{ end }}
+{{ end }}
