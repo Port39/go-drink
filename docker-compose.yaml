@@ -2,22 +2,11 @@ services:
   db:
     image: postgres:16
     restart: on-failure
-    environment:
-      POSTGRES_PASSWORD: "changeme"
-      POSTGRES_USER: "godrink"
-      POSTGRES_DB: "godrink"
     volumes:
       - pgdata:/var/lib/postgresql/data
   app:
     image: ghcr.io/port39/go-drink:latest
     restart: on-failure
-    environment:
-      GODRINK_DBDRIVER: "postgres"
-      GODRINK_DB: "postgresql://godrink:changeme@db:5432/godrink?sslmode=disable"
-      GODRINK_SMTPHOST: "yourmailhost.example:465"
-      GODRINK_SMTPUSER: "godrink@yourmailhost.example"
-      GODRINK_SMTPPASS: "changeme"
-      GODRINK_SMTPFROM: "godrink@yourmailhost.example"
     ports:
       - "8080:8080"
     depends_on:
