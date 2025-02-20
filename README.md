@@ -16,10 +16,12 @@ interact with the system:
     options, they can choose for themselves what gives "good enough" security and a fast user experience. 
 
 ## External Dependencies
+
 This backend depends on several other services, that should be configured alongside with this application. Not all are 
 strictly required, but some functions might not work if a service is configured improperly. 
 
 ### Database
+
 go-drink can either be used with Postgresql as a database backend, or sqlite. If no database backend is configured, an 
 in-memory sqlite database is used. However, if a backend is configured, but it is unreachable during the application 
 startup, go-drink terminates instantly.
@@ -30,6 +32,7 @@ startup, go-drink terminates instantly.
 | `GODRINK_DB`         | `postgresql://godrink:changeme@db:5432/godrink?sslmode=disable` | A connection string describing of the database can be reached      | 
 
 ### SMTP / Mailing
+
 An SMTP server can be configured, so that the application can send out emails to users, for example if a password reset 
 is requested. If the SMTP configuration is omitted, or contains invalid data, a warning is logged, but the application 
 functions otherwise normally.
