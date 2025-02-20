@@ -95,12 +95,35 @@ func VerifyCashUserExists(db *sql.DB) error {
 }
 
 func VerifyAdminUserExists(db *sql.DB) error {
-	_, err := db.Exec(`INSERT INTO users (id, username, email, role, credit) 
+	tx, err := db.Begin()
+	defer tx.Rollback()
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`INSERT INTO users (id, username, email, role, credit) 
 	VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, AdminUserId, "admin", "admin@localhost", "admin", 0)
-	password := uuid.New()
-	log.Println(`"admin" user registered with password: "` + password.String() + `" (without quotes)`)
-	_, err = db.Exec(`INSERT INTO auth (user_id, type, data) 
+
+	if err != nil {
+		return err
+	}
+
+	rows, err := db.Query("SELECT * FROM auth WHERE user_id = $1", AdminUserId)
+
+	if !rows.Next() {
+		password := uuid.New()
+		log.Println(`"admin" user registered with password: "` + password.String() + `" (without quotes)`)
+		_, err = db.Exec(`INSERT INTO auth (user_id, type, data) 
 	VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, AdminUserId, "password", CalculatePasswordHash(password.String()))
+
+		if err == nil {
+			return tx.Commit()
+		}
+
+		return err
+	}
+
 	return err
 }
 
