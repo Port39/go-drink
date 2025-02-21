@@ -46,6 +46,13 @@ func ExpectSuccess(cond bool, t *testing.T) {
 	ExpectFailure(!cond, t)
 }
 
+func ExpectEqual(got any, want any, t *testing.T) {
+	t.Helper()
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
 func GetTestingContext(t *testing.T) (context.Context, context.CancelFunc) {
 	deadline, ok := t.Deadline()
 	if ok {
