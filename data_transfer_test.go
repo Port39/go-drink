@@ -1,8 +1,10 @@
 package main
 
 import (
-	"github.com/Port39/go-drink/testutils"
+	"strings"
 	"testing"
+
+	"github.com/Port39/go-drink/testutils"
 )
 
 const securePassword = "No need to check this, it is already verified in the users package"
@@ -37,25 +39,71 @@ func TestAddItemRequest_Validate(t *testing.T) {
 	testutils.FailOnError(req.Validate(), t)
 }
 
-func TestUpdateItemRequest_Validate(t *testing.T) {
-	req := updateItemRequest{
-		Id:      "invalid uuid",
-		Name:    "loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong",
-		Price:   0,
-		Image:   "not base64 encoded data",
-		Amount:  -1,
+func validUpdateRequest() updateItemRequest {
+	return updateItemRequest{
+		Id:      "00000000-0000-0000-0000-000000000000",
+		Name:    "a name",
+		Price:   1,
+		Image:   "AAAA",
+		Amount:  1,
 		Barcode: "",
 	}
-	testutils.ExpectError(req.Validate(), t)
-	req.Id = "00000000000000000000000000000000"
-	testutils.ExpectErrorWithMessage(req.Validate(), "name to long", t)
-	testutils.ExpectSuccess(req.Id == "00000000-0000-0000-0000-000000000000", t)
-	req.Name = "not too long"
-	testutils.ExpectError(req.Validate(), t)
-	req.Image = "AAAA"
-	testutils.ExpectErrorWithMessage(req.Validate(), "amount must not be negative", t)
-	req.Amount = 1
-	testutils.FailOnError(req.Validate(), t)
+}
+
+func TestUpdateItemRequest_Validate(t *testing.T) {
+	t.Run("valid request", func(t *testing.T) {
+		req := validUpdateRequest()
+		testutils.FailOnError(req.Validate(), t)
+	})
+
+	t.Run("uuid without dashes is valid and will be normalized", func(t *testing.T) {
+		req := validUpdateRequest()
+		req.Id = strings.ReplaceAll(req.Id, "-", "")
+		testutils.FailOnError(req.Validate(), t)
+		testutils.ExpectEqual(req.Id, validUpdateRequest().Id, t)
+	})
+
+	t.Run("id must be uuid", func(t *testing.T) {
+		req := validUpdateRequest()
+		req.Id = "not uuid"
+		testutils.ExpectError(req.Validate(), t)
+	})
+
+	t.Run("name can be 64 chars long", func(t *testing.T) {
+		req := validUpdateRequest()
+		req.Name = strings.Repeat("0", 64)
+		testutils.FailOnError(req.Validate(), t)
+	})
+
+	t.Run("name can be empty", func(t *testing.T) {
+		req := validUpdateRequest()
+		req.Name = ""
+		testutils.FailOnError(req.Validate(), t)
+	})
+
+	t.Run("name can't exceed 64 chars", func(t *testing.T) {
+		req := validUpdateRequest()
+		req.Name = strings.Repeat("0", 65)
+		testutils.ExpectErrorWithMessage(req.Validate(), "name too long", t)
+	})
+
+	t.Run("image must be valid base64", func(t *testing.T) {
+		req := validUpdateRequest()
+		req.Image = "bla"
+		testutils.ExpectError(req.Validate(), t)
+	})
+
+	t.Run("amount can be zero", func(t *testing.T) {
+		req := validUpdateRequest()
+		req.Amount = 0
+		testutils.FailOnError(req.Validate(), t)
+	})
+
+	t.Run("amount can't be less than zero", func(t *testing.T) {
+		req := validUpdateRequest()
+		req.Amount = -1
+		testutils.ExpectErrorWithMessage(req.Validate(), "amount must not be negative", t)
+	})
 }
 
 func TestBuyItemRequest_Validate(t *testing.T) {
