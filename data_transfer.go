@@ -102,7 +102,7 @@ func (r updateItemRequest) Validate() error {
 	r.Id = id.String()
 
 	if len(r.Name) > 64 {
-		return errors.New("name to long")
+		return errors.New("name too long")
 	}
 	data, err := base64.StdEncoding.DecodeString(r.Image)
 	if err != nil {
