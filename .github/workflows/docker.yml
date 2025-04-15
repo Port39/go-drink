@@ -16,6 +16,8 @@ on:
       - ".run"
       - "http-test"
       - "docs"
+  pull_request:
+
 jobs:
   docker:
     runs-on: ubuntu-latest

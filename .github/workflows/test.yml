@@ -11,7 +11,7 @@ on:
       - "docker-compose.dev.yaml"
       - "openapi.yaml"
       - ".run"
-  pull-requests:
+  pull_request:
 
 jobs:
   HTTP-Tests:
