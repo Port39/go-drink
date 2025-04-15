@@ -11,6 +11,8 @@ on:
       - "docker-compose.dev.yaml"
       - "openapi.yaml"
       - ".run"
+  pull-requests:
+
 jobs:
   HTTP-Tests:
     runs-on: ubuntu-latest
