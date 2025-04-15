@@ -4,6 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"net/http"
+	"time"
+
 	"github.com/Port39/go-drink/handlehttp"
 	"github.com/Port39/go-drink/items"
 	"github.com/Port39/go-drink/mailing"
@@ -11,10 +15,7 @@ import (
 	"github.com/Port39/go-drink/transactions"
 	"github.com/Port39/go-drink/users"
 	_ "github.com/lib/pq"
-	"log"
 	_ "modernc.org/sqlite"
-	"net/http"
-	"time"
 )
 
 var database *sql.DB
@@ -42,6 +43,10 @@ func initialize() {
 	err = users.VerifyAuthTableExists(database)
 	if err != nil {
 		log.Fatal("Error creating auth table: ", err)
+	}
+	err = users.VerifyAdminUserExists(database)
+	if err != nil {
+		log.Fatal("Error creating admin user: ", err)
 	}
 	err = users.VerifyPasswordResetTableExists(database)
 	if err != nil {
@@ -79,14 +84,23 @@ func initialize() {
 	}()
 }
 
-func main() {
+var noData handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
+	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), nil
+}
 
+func main() {
 	initialize()
 
-	handleEnhanced("GET /items", getItems, toJsonOrHtmlByAccept("base.gohtml"))
+	http.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticFiles)))
+
+	handleEnhanced("GET /index", noData, toHtml("templates/index.gohtml"))
+	handleEnhanced("GET /", noData, toHtml("templates/index.gohtml"))
+	handleEnhanced("GET /login", noData, toHtml("templates/login.gohtml"))
+
+	handleEnhanced("GET /items", getItems, toJsonOrHtmlByAccept("templates/items.gohtml"))
 
 	handleEnhanced("GET /items/{id}", getItem, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
-	handleEnhanced("POST /items/add", verifyRole("admin", addItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	handleEnhanced("POST /items/add", verifyRole("admin", addItem), toJsonOrHtmlByAccept("templates/new-item.gohtml"))
 	handleEnhanced("POST /items/update", verifyRole("admin", updateItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("GET /items/barcode/{id}", getItemByBarcode, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
@@ -100,7 +114,7 @@ func main() {
 	handleEnhanced("POST /auth/password-reset/request", requestPasswordReset, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /auth/password-reset", resetPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	handleEnhanced("POST /login/password", loginWithPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	handleEnhanced("POST /login/password", loginWithPassword, writeSessionCookie(toJsonOrHtmlByAccept("templates/index.gohtml")))
 	handleEnhanced("POST /login/cash", loginCash, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /login/none", loginNone, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /login/nfc", loginNFC, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))

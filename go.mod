@@ -9,6 +9,7 @@ require (
 	github.com/wneessen/go-mail v0.4.2
 	golang.org/x/crypto v0.35.0
 	modernc.org/sqlite v1.32.0
+	github.com/gorilla/schema v1.4.1
 )
 
 require (

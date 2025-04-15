@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	USERNAME_REGEX = regexp.MustCompile(`^[a-zA-Z0-9_.-]{3,64}$`)
-	EMAIL_REGEX    = regexp.MustCompile(`^[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+$`)
+	UsernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]{3,64}$`)
+	EmailRegex    = regexp.MustCompile(`^[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+$`)
 )
 
 type passwordRegistrationRequest struct {
@@ -21,10 +21,10 @@ type passwordRegistrationRequest struct {
 }
 
 func (p *passwordRegistrationRequest) Validate() error {
-	if !USERNAME_REGEX.MatchString(p.Username) {
+	if !UsernameRegex.MatchString(p.Username) {
 		return errors.New("invalid username")
 	}
-	if p.Email != "" && !EMAIL_REGEX.MatchString(p.Email) {
+	if p.Email != "" && !EmailRegex.MatchString(p.Email) {
 		return errors.New("invalid email")
 	}
 	return validatePassword(p.Password)
@@ -102,7 +102,7 @@ func (r *updateItemRequest) Validate() error {
 	r.Id = id.String()
 
 	if len(r.Name) > 64 {
-		return errors.New("name to long")
+		return errors.New("name too long")
 	}
 	data, err := base64.StdEncoding.DecodeString(r.Image)
 	if err != nil {
@@ -169,7 +169,7 @@ type requestPasswordResetRequest struct {
 }
 
 func (p *requestPasswordResetRequest) Validate() error {
-	if !USERNAME_REGEX.MatchString(p.Username) {
+	if !UsernameRegex.MatchString(p.Username) {
 		return errors.New("invalid username")
 	}
 	return nil

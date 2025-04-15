@@ -20,7 +20,7 @@ The rough structure of the backend is as follows:
 
 ![Backend Architecture](./backend-architecture.svg)
 
-This diagram shows the flow of data through an Http-Request.
+This diagram shows the flow of data through an HTTP-Request.
 
 In a nutshell, a `RequestHandler` is chosen to deal with an incoming request.
 This is a function that receives the request, calls the appropriate logic (e.g. adding a user)
@@ -39,8 +39,8 @@ functionality like adding CORS-headers or making available and checking authenti
 ### Code structure
 
 Currently, the implementation of `RequestHandler`s is in `handlers.go`.
-They call into different packages which implement differnet domains of the app.
-The handlers are assembled into a HTTP-Server in `main.go`, which uses the 
+They call into different packages which implement different domains of the app.
+The handlers are assembled into an HTTP-Server in `main.go`, which uses the 
 utility-functions of `handlerUtil.go` to implement specific middlewares.
 
 For this purpose, it uses different utilities from the `handlehttp` package,

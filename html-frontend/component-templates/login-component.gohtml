@@ -1,0 +1,14 @@
+{{ define "login-component" }}
+    <div id="login-component"> 
+        {{ if .Ctx.HasSession }}
+            <span>
+                You are logged in as {{ .Ctx.Session.Role }}.&nbsp;
+                <form up-submit="false" action="/logout" method="post" style="display: inline;">
+                    <button type="submit" style="margin: 10px;">Logout</button>
+                </form>
+            </span>
+        {{ else }}
+            <a href="/login">Login</a>
+        {{ end }}
+    </div>
+{{ end }}
