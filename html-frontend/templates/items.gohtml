@@ -2,6 +2,16 @@
     GoDrink - Items
 {{ end }}
 {{ define "content" }}
+    <style>
+    #item-table {
+        td:nth-child(2),
+        td:nth-child(3), 
+        th:nth-child(2),
+        th:nth-child(3) {
+            text-align: right;
+        }
+    }
+    </style>
     <section>
         <h2>Add an item to the fridge</h2>
         {{ template "new-item-form" . }}
