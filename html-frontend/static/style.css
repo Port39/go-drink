@@ -19,5 +19,10 @@ body {
 }
 
 .alert-success {
-    border: 1px solid green;
+    border: var(32px) solid transparent;
+    border-radius: var(--length-3);
+    background-color: var(--background-alt);
+    box-shadow: inset 0 0 var(--length-3) darkgreen;
+    padding: var(--length-4);
+    filter: drop-shadow(var(--length-2), var(--length-2), var(--length-2), var(--background-alt));
 }
