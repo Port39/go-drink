@@ -1,4 +1,28 @@
 {{ define "new-item-form" }}
+    <style>
+    #new-item-form {
+        fieldset {
+            display: flex;
+            flex-flow: row wrap;
+            flex-grow: 1;
+        }
+
+        input[type=number] {
+            text-align: right;
+            max-width: 100px;
+            -moz-appearance: textfield;               
+
+            &::-webkit-outer-spin-button,
+            &::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+        }
+        button {
+            margin-left: auto;
+        }
+    }
+    </style>
     <form
         id="new-item-form"
         method="post"
@@ -14,14 +38,14 @@
                 <input name="name" type="text" />
             </label>
             <label for="price"
-                >price
+                >price (EUR)
                 <input name="price" type="number" step="0.01" />
             </label>
             <label for="amount"
                 >amount
                 <input name="amount" type="number" />
             </label>
-            <button type="submit">Add item</button>
+            <button type="submit">Add</button>
         </fieldset>
     </form>
 {{ end }}
