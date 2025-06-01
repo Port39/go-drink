@@ -318,7 +318,7 @@ var logout handlehttp.RequestHandler = func(r *http.Request) (context.Context, a
 	if err == nil && mediatype.Matches(handlehttp.Html) {
 		result = http.StatusOK
 	} else {
-		result = http.StatusCreated
+		result = http.StatusNoContent
 	}
 
 	ctx := handlehttp.ContextWithoutSession(r.Context())
