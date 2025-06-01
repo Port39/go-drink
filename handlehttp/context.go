@@ -23,7 +23,8 @@ type ContextStruct struct {
 }
 
 func CtxToStruct(ctx context.Context) ContextStruct {
-	sess, hasSession := ContextGetSession(ctx)
+	sess, ok := ContextGetSession(ctx)
+	hasSession := ok && sess != nil
 	var sessionRef *session.Session
 	if hasSession {
 		sessionRef = sess
@@ -51,6 +52,11 @@ func ContextWithStatus(ctx context.Context, status int) context.Context {
 func ContextWithSession(ctx context.Context, session session.Session) context.Context {
 	return context.WithValue(ctx, contextKeySession, &session)
 }
+
+func ContextWithoutSession(ctx context.Context) context.Context {
+	return context.WithValue(ctx, contextKeySession, nil)
+}
+
 func ContextWithSessionToken(ctx context.Context, sessionToken string) context.Context {
 	return context.WithValue(ctx, contextKeySessionToken, sessionToken)
 }

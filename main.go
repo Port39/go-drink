@@ -119,7 +119,7 @@ func main() {
 	handleEnhanced("POST /login/none", loginNone, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /login/nfc", loginNFC, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	handleEnhanced("POST /logout", logout, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	handleEnhanced("POST /logout", logout, writeSessionCookie(toJsonOrHtmlByAccept("templates/index.gohtml")))
 
 	handleEnhanced("POST /buy", verifyRole("user", buyItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
