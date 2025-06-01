@@ -1,4 +1,5 @@
 POST {{godrink_url}}/logout
+Accept: application/json
 
 > {%
  client.test("returns 204", ()=>{
