@@ -117,12 +117,15 @@ var tokenCookieName = "__Host-Token"
 func writeSessionCookie(getMapper handlehttp.GetResponseMapper) handlehttp.GetResponseMapper {
 	return func(r *http.Request) handlehttp.ResponseMapper {
 		return func(w http.ResponseWriter, input handlehttp.MappingInput) {
-			switch d := input.Data.(type) {
-			case loginResponse:
-				token := d.Token
-				w.Header().Set("Set-Cookie", tokenCookieName+"="+token+";Secure;Same-Site=Strict;HttpOnly;Path=/")
-			default:
+			session := input.Ctx.Session
+			var token string
+			if session != nil {
+				token = session.Id
+			} else {
+				token = ""
 			}
+
+			w.Header().Set("Set-Cookie", tokenCookieName+"="+token+";Secure;Same-Site=Strict;HttpOnly;Path=/")
 			mapper := getMapper(r)
 			mapper(w, input)
 		}
