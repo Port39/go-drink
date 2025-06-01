@@ -12,6 +12,7 @@ import (
 
 	"github.com/Port39/go-drink/domain_errors"
 	"github.com/Port39/go-drink/handlehttp"
+	contenttype "github.com/Port39/go-drink/handlehttp/content-type"
 	"github.com/Port39/go-drink/items"
 	"github.com/Port39/go-drink/session"
 	"github.com/Port39/go-drink/transactions"
@@ -310,7 +311,20 @@ var logout handlehttp.RequestHandler = func(r *http.Request) (context.Context, a
 	if hasToken {
 		sessionStore.Delete(token)
 	}
-	return handlehttp.ContextWithStatus(r.Context(), http.StatusNoContent), nil
+	mediatype, _, err := contenttype.GetAcceptableMediaType(r, []contenttype.MediaType{handlehttp.Html, handlehttp.Json})
+
+	var result int
+
+	if err == nil && mediatype.Matches(handlehttp.Html) {
+		result = http.StatusOK
+	} else {
+		result = http.StatusCreated
+	}
+
+	ctx := handlehttp.ContextWithoutSession(r.Context())
+	ctx = handlehttp.ContextWithStatus(ctx, result)
+
+	return ctx, nil
 }
 
 var buyItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
