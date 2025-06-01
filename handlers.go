@@ -156,7 +156,13 @@ var registerWithPassword handlehttp.RequestHandler = func(r *http.Request) (cont
 		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
 
-	return handlehttp.ContextWithStatus(r.Context(), http.StatusCreated), user
+	sess := session.CreateSession(user.Id, user.Role, auth.Type, config.SessionLifetime)
+	sessionStore.Store(sess)
+
+	ctx := handlehttp.ContextWithSession(r.Context(), sess)
+	ctx = handlehttp.ContextWithStatus(ctx, http.StatusCreated)
+
+	return ctx, user
 }
 
 var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
