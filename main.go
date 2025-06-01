@@ -108,7 +108,7 @@ func main() {
 	handleEnhanced("GET /users/noauth", getUsersWithNoneAuth, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("GET /users/{id}", verifyRole("admin", getUser), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	handleEnhanced("POST /register/password", registerWithPassword, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	handleEnhanced("POST /register/password", registerWithPassword, writeSessionCookie(toJsonOrHtmlByAccept("templates/index.gohtml")))
 
 	handleEnhanced("POST /auth/add", verifyRole("user", addAuthMethod), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("POST /auth/password-reset/request", requestPasswordReset, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
