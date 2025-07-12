@@ -3,15 +3,13 @@ package main
 import (
 	"context"
 	"embed"
+	"github.com/Port39/go-drink/handlehttp"
+	"github.com/Port39/go-drink/session"
+	"github.com/Port39/go-drink/users"
 	"io/fs"
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/Port39/go-drink/domain_errors"
-	"github.com/Port39/go-drink/handlehttp"
-	"github.com/Port39/go-drink/session"
-	"github.com/Port39/go-drink/users"
 )
 
 func enrichRequestContext(next handlehttp.RequestHandler) handlehttp.RequestHandler {
@@ -55,12 +53,12 @@ func verifyRole(role string, next handlehttp.RequestHandler) handlehttp.RequestH
 		s, hasSession := handlehttp.ContextGetSession(r.Context())
 		if !hasSession {
 			log.Println("Rejecting request due to lacking session.")
-			return handlehttp.ContextWithStatus(r.Context(), http.StatusUnauthorized), domain_errors.ForStatus(http.StatusUnauthorized)
+			return errorWithContextAndDetail(r.Context(), http.StatusUnauthorized, "You need to be logged in to do that!")
 		}
 
 		if !users.CheckRole(s.Role, role) {
 			log.Println("Rejecting request due to lacking role.")
-			return handlehttp.ContextWithStatus(r.Context(), http.StatusForbidden), domain_errors.ForStatus(http.StatusForbidden)
+			return errorWithContextAndDetail(r.Context(), http.StatusForbidden, "You are not allowed to do that. You need to be logged in as a user with the role \""+role+"\".")
 		}
 
 		return next(r)
