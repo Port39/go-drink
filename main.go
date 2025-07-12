@@ -104,7 +104,7 @@ func main() {
 	handleEnhanced("POST /items/update", verifyRole("admin", updateItem), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("GET /items/barcode/{id}", getItemByBarcode, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 
-	handleEnhanced("GET /users", verifyRole("admin", getUsers), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
+	handleEnhanced("GET /users", verifyRole("admin", getUsers), toJsonOrHtmlByAccept("templates/users.gohtml"))
 	handleEnhanced("GET /users/noauth", getUsersWithNoneAuth, handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 	handleEnhanced("GET /users/{id}", verifyRole("admin", getUser), handlehttp.AlwaysMapWith(handlehttp.JsonMapper))
 

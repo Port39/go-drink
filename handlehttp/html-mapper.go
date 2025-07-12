@@ -19,10 +19,24 @@ func hasField(v interface{}, name string) bool {
 	return rv.FieldByName(name).IsValid()
 }
 
+func hasRole(input MappingInput, roles ...string) bool {
+	sess := input.Ctx.Session
+	if sess != nil {
+		for _, role := range roles {
+			if sess.Role == role {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func HtmlMapper(tplFS fs.FS, useFragment bool, tplPaths ...string) ResponseMapper {
 	templates := append(tplPaths, "base-templates/*.gohtml", "component-templates/*.gohtml")
 	tpl := template.Must(template.New("template").Funcs(template.FuncMap{
 		"hasField": hasField,
+		"hasRole":  hasRole,
 	}).ParseFS(tplFS, templates...))
 
 	return func(w http.ResponseWriter, input MappingInput) {

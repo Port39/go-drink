@@ -24,6 +24,9 @@
                     <ul>
                         <li><a href="/index">Home</a></li>
                         <li><a href="/items">Inventory</a></li>
+                        {{ if hasRole . "admin" }}
+                            <li><a href="/users">Users</a></li>
+                        {{ end }}
                         <li>
                             {{ template "login-status-component" . }}
                         </li>

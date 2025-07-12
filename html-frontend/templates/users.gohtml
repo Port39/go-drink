@@ -1,0 +1,43 @@
+{{ define "title" }}
+    GoDrink - Items
+{{ end }}
+{{ define "content" }}
+    <style>
+    #users-table {
+        th:nth-child(4),
+        td:nth-child(4) {
+            text-align: right;
+        }
+    }
+    </style>
+    <section>
+        <h2>Current users</h2>
+        <p>These users are currently registered</p>
+        <table id="users-table" style="display: table;width: 100%;">
+            <colgroup>
+                <col style="width: 25%;" />
+                <col style="width: 25%;" />
+                <col style="width: 25%;" />
+                <col style="width: 25%;" />
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>username</th>
+                    <th>email</th>
+                    <th>role</th>
+                    <th>credit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ range .Data }}
+                    <tr>
+                        <td>{{ .Username }}</td>
+                        <td>{{ .Email }}</td>
+                        <td>{{ .Role }}</td>
+                        <td>{{ .Credit }}</td>
+                    </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    </section>
+{{ end }}
