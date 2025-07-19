@@ -34,7 +34,7 @@
                         <td>{{ .Username }}</td>
                         <td>{{ .Email }}</td>
                         <td>{{ .Role }}</td>
-                        <td>{{ .Credit }}</td>
+                        <td>{{ .Credit | formatCurrency }}</td>
                     </tr>
                 {{ end }}
             </tbody>
