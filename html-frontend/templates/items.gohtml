@@ -36,7 +36,7 @@
                 {{ range .Data }}
                     <tr>
                         <td>{{ .Name }}</td>
-                        <td>{{ .Price }}</td>
+                        <td>{{ .Price | formatCurrency }}</td>
                         <td>{{ .Amount }}</td>
                     </tr>
                 {{ end }}

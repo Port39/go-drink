@@ -1,6 +1,7 @@
 package handlehttp
 
 import (
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
@@ -32,11 +33,16 @@ func hasRole(input MappingInput, roles ...string) bool {
 	return false
 }
 
+func formatCurrency(cents int) string {
+	return fmt.Sprintf("€%2.2f", (float32(cents) / 100.0))
+}
+
 func HtmlMapper(tplFS fs.FS, useFragment bool, tplPaths ...string) ResponseMapper {
 	templates := append(tplPaths, "base-templates/*.gohtml", "component-templates/*.gohtml")
 	tpl := template.Must(template.New("template").Funcs(template.FuncMap{
-		"hasField": hasField,
-		"hasRole":  hasRole,
+		"hasField":       hasField,
+		"hasRole":        hasRole,
+		"formatCurrency": formatCurrency,
 	}).ParseFS(tplFS, templates...))
 
 	return func(w http.ResponseWriter, input MappingInput) {
