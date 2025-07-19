@@ -96,6 +96,7 @@ func main() {
 	handleEnhanced("GET /index", noData, toHtml("templates/index.gohtml"))
 	handleEnhanced("GET /", noData, toHtml("templates/index.gohtml"))
 	handleEnhanced("GET /login", noData, toHtml("templates/login.gohtml"))
+	handleEnhanced("GET /profile", getLoggedInUser, toJsonOrHtmlByAccept("templates/profile.gohtml"))
 
 	handleEnhanced("GET /items", getItems, toJsonOrHtmlByAccept("templates/items.gohtml"))
 

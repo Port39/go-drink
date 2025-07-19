@@ -405,8 +405,22 @@ var getItemByBarcode handlehttp.RequestHandler = func(r *http.Request) (context.
 	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), item
 }
 
+var getLoggedInUser handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
+	session, ok := handlehttp.ContextGetSession(r.Context())
+
+	if !ok {
+		return errorWithContext(r.Context(), http.StatusUnauthorized)
+	}
+
+	return getUserByIdStr(r, session.UserId)
+}
+
 var getUser handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
 	idString := strings.TrimPrefix(r.URL.Path, "/users/")
+	return getUserByIdStr(r, idString)
+}
+
+func getUserByIdStr(r *http.Request, idString string) (context.Context, any) {
 	id, err := uuid.Parse(idString)
 	if err != nil {
 		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "invalid user id, uuid expected")
@@ -416,6 +430,7 @@ var getUser handlehttp.RequestHandler = func(r *http.Request) (context.Context, 
 		return errorWithContext(r.Context(), http.StatusNotFound)
 	}
 	return handlehttp.ContextWithStatus(r.Context(), http.StatusOK), user
+
 }
 
 var changeCredit handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {

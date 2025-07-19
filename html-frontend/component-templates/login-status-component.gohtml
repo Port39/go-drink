@@ -3,6 +3,7 @@
         {{ if .Ctx.HasSession }}
             <span>
                 You are logged in as {{ .Ctx.Session.Role }}.&nbsp;
+                <a href="/profile">Profile</a>&nbsp;
                 <form
                     id="logout-form"
                     method="post"

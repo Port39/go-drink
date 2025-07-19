@@ -1,0 +1,29 @@
+{{ define "title" }}
+    GoDrink - Login
+{{ end }}
+{{ define "content" }}
+ {{ with .Data }}
+ <section>
+  <h2>Profile</h2>
+  <ul>
+   <li>
+   You are logged in as {{.Username}}.
+   </li>
+   <li>
+   {{ if .Email }}
+   You have set your email as {{.Email}}.
+   {{ else }}
+   You have not set your email yet.
+   {{ end}}
+   </li>
+   <li>
+   You have {{.Role}} privileges.
+   </li>
+   <li>
+   Your current credit is {{.Credit | formatCurrency}}.
+   </li>
+  </ul>
+ </section>
+ {{ end }}
+{{ end }} 
+
