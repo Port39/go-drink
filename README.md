@@ -71,7 +71,7 @@ To play around with go-drink locally, you have these options:
 
 - run go-drink on your own with `go run ./...`
 - run the docker-compose setup via `docker compose up`
-- run the docker-compose setup via `modd`
+- run a auto-refreshing setup with a docker-compose-based database via `go tool -modfile=tools.mod modd`
 
 ### Database choice
 
