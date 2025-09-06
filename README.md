@@ -55,3 +55,32 @@ following environment variable. If the variable is not set, the `Access-Control-
 | Environment Variable | Example Value           | Notes                                                                                                                                                                        |
 |----------------------|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `GODRINK_CORS`       | `http://localhost:8081` | The value is directly passed along into the `Access-Control-Allow-Origin` header. If a value is set here, the `Access-Control-Allow-Credentials` header will be set as well. | 
+
+## Development
+
+TL;DR:
+
+To develop go-drink locally, we recommend running it by
+
+1. setting environment variables with `source .env.development`
+2. running [modd](https://github.com/cortesi/modd) (for auto-refresh) or `docker compose up`
+
+-----
+
+To play around with go-drink locally, you have these options:
+
+- run go-drink on your own with `go run ./...`
+- run the docker-compose setup via `docker compose up`
+- run the docker-compose setup via `modd`
+
+### Database choice
+
+In any case, you'll have to choose your database with the variables documented above.
+If you don't add any environment variables, go-drink will start an embedded instance of sqlite. 
+Since the database will be empty, go-drink will add an administrative user and log its credentials to stdout.
+Since the embedded sqlite database will be reset when you stop the program, you'll have to get the admin credentials every time you restart the application.
+
+To avoid this:
+
+- choose an sqlite file path with the `GODRINK_DB` environment variable.
+- use a persistent postgres database (see [.env.development](./.env.development))
