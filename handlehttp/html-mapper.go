@@ -38,7 +38,9 @@ func formatCurrency(cents int) string {
 }
 
 func HtmlMapper(tplFS fs.FS, useFragment bool, tplPaths ...string) ResponseMapper {
-	templates := append(tplPaths, "base-templates/*.gohtml", "component-templates/*.gohtml")
+	templates := []string{"base-templates/*.gohtml", "component-templates/*.gohtml"}
+	templates = append(templates, tplPaths...)
+
 	tpl := template.Must(template.New("template").Funcs(template.FuncMap{
 		"hasField":       hasField,
 		"hasRole":        hasRole,
