@@ -1,19 +1,7 @@
 {{ define "fragment" }}
     <main>
         {{ if .Ctx.HasError }}
-            {{ with .Data }}
-                <section id="errors">
-                    <hgroup>
-                        <h2>Error encountered</h2>
-                        <p>
-                            <strong>{{ .Title }} ({{ .Status }})</strong>
-                        </p>
-                    </hgroup>
-                    {{ if .Detail }}
-                        <p>{{ .Detail }}</p>
-                    {{ end }}
-                </section>
-            {{ end }}
+            {{ template "error" . }}
         {{ else }}
             {{ template "content" . }}
         {{ end }}
