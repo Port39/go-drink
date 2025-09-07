@@ -20,18 +20,18 @@ type passwordRegistrationRequest struct {
 	Password string `json:"password"`
 }
 
-func (p *passwordRegistrationRequest) Validate() error {
+func (p passwordRegistrationRequest) ValidateAndParse() (passwordRegistrationRequest, error) {
 	if !UsernameRegex.MatchString(p.Username) {
-		return errors.New("invalid username")
+		return p, errors.New("invalid username")
 	}
 	if p.Email != "" && !EmailRegex.MatchString(p.Email) {
-		return errors.New("invalid email")
+		return p, errors.New("invalid email")
 	}
-	return validatePassword(p.Password)
+	return p, validatePassword(p.Password)
 }
 
-func (p *passwordLoginRequest) Validate() error {
-	return nil
+func (p passwordLoginRequest) ValidateAndParse() (passwordLoginRequest, error) {
+	return p, nil
 }
 
 type passwordLoginRequest struct {
@@ -39,16 +39,16 @@ type passwordLoginRequest struct {
 	Password string `json:"password"`
 }
 
-func (p *noneLoginRequest) Validate() error {
-	return nil
+func (p noneLoginRequest) ValidateAndParse() (noneLoginRequest, error) {
+	return p, nil
 }
 
 type noneLoginRequest struct {
 	Username string `json:"username"`
 }
 
-func (p *nfcLoginRequest) Validate() error {
-	return nil
+func (p nfcLoginRequest) ValidateAndParse() (nfcLoginRequest, error) {
+	return p, nil
 }
 
 type nfcLoginRequest struct {
@@ -68,21 +68,21 @@ type addItemRequest struct {
 	Barcode string `json:"barcode"`
 }
 
-func (r *addItemRequest) Validate() error {
+func (r addItemRequest) ValidateAndParse() (addItemRequest, error) {
 	if len(r.Name) > 64 {
-		return errors.New("name to long")
+		return r, errors.New("name to long")
 	}
 	data, err := base64.StdEncoding.DecodeString(r.Image)
 	if err != nil {
-		return err
+		return r, err
 	}
 	if len(data) > 2097152 {
-		return errors.New("image to large (max 2MiB allowed)")
+		return r, errors.New("image to large (max 2MiB allowed)")
 	}
 	if r.Amount < 0 {
-		return errors.New("amount must not be negative")
+		return r, errors.New("amount must not be negative")
 	}
-	return nil
+	return r, nil
 }
 
 type updateItemRequest struct {
@@ -94,27 +94,27 @@ type updateItemRequest struct {
 	Barcode string `json:"barcode"`
 }
 
-func (r *updateItemRequest) Validate() error {
+func (r updateItemRequest) ValidateAndParse() (updateItemRequest, error) {
 	id, err := uuid.Parse(r.Id)
 	if err != nil {
-		return err
+		return r, err
 	}
 	r.Id = id.String()
 
 	if len(r.Name) > 64 {
-		return errors.New("name too long")
+		return r, errors.New("name too long")
 	}
 	data, err := base64.StdEncoding.DecodeString(r.Image)
 	if err != nil {
-		return err
+		return r, err
 	}
 	if len(data) > 2097152 {
-		return errors.New("image to large (max 2MiB allowed)")
+		return r, errors.New("image to large (max 2MiB allowed)")
 	}
 	if r.Amount < 0 {
-		return errors.New("amount must not be negative")
+		return r, errors.New("amount must not be negative")
 	}
-	return nil
+	return r, nil
 }
 
 type buyItemRequest struct {
@@ -122,16 +122,16 @@ type buyItemRequest struct {
 	Amount int    `json:"amount"`
 }
 
-func (r *buyItemRequest) Validate() error {
+func (r buyItemRequest) ValidateAndParse() (buyItemRequest, error) {
 	id, err := uuid.Parse(r.ItemId)
 	if err != nil {
-		return err
+		return r, err
 	}
 	r.ItemId = id.String()
 	if r.Amount < 1 {
-		return errors.New("amount must be at least one item")
+		return r, errors.New("amount must be at least one item")
 	}
-	return nil
+	return r, nil
 }
 
 type addAuthMethodRequest struct {
@@ -139,25 +139,25 @@ type addAuthMethodRequest struct {
 	Data   string `json:"data"`
 }
 
-func (r *addAuthMethodRequest) Validate() error {
+func (r addAuthMethodRequest) ValidateAndParse() (addAuthMethodRequest, error) {
 	if r.Method == "none" {
-		return nil
+		return r, nil
 	}
 	if r.Method == "nfc" {
 		if r.Data == "" {
-			return errors.New("missing nfc uid")
+			return r, errors.New("missing nfc uid")
 		}
 		_, err := hex.DecodeString(r.Data)
 		if err != nil {
-			return err
+			return r, err
 		}
-		return nil
+		return r, nil
 	}
-	return errors.New("invalid method")
+	return r, errors.New("invalid method")
 }
 
-func (r *changeCreditRequest) Validate() error {
-	return nil
+func (r changeCreditRequest) ValidateAndParse() (changeCreditRequest, error) {
+	return r, nil
 }
 
 type changeCreditRequest struct {
@@ -168,11 +168,11 @@ type requestPasswordResetRequest struct {
 	Username string `json:"username"`
 }
 
-func (p *requestPasswordResetRequest) Validate() error {
+func (p requestPasswordResetRequest) ValidateAndParse() (requestPasswordResetRequest, error) {
 	if !UsernameRegex.MatchString(p.Username) {
-		return errors.New("invalid username")
+		return p, errors.New("invalid username")
 	}
-	return nil
+	return p, nil
 }
 
 type resetPasswordRequest struct {
@@ -180,13 +180,13 @@ type resetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
-func (p *resetPasswordRequest) Validate() error {
+func (p resetPasswordRequest) ValidateAndParse() (resetPasswordRequest, error) {
 	token, err := uuid.Parse(p.Token)
 	if err != nil {
-		return err
+		return p, err
 	}
 	p.Token = token.String()
-	return validatePassword(p.Password)
+	return p, validatePassword(p.Password)
 }
 
 func validatePassword(password string) error {

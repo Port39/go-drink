@@ -15,8 +15,8 @@ func logAndCreateError(message string, err error) error {
 	return errors.New(message)
 }
 
-type Validatable interface {
-	Validate() error
+type Parseable[T any] interface {
+	ValidateAndParse() (T, error)
 }
 
 func readValidJsonBody[T any](r *http.Request, dest *T) error {
@@ -52,10 +52,7 @@ func readValidFormBody[T any](r *http.Request, dest *T) error {
 	return nil
 }
 
-func ReadValidBody[T any, PT interface {
-	Validatable
-	*T
-}](req *http.Request) (PT, error) {
+func ReadValidBody[T Parseable[T]](req *http.Request) (*T, error) {
 	var parsed = new(T)
 	mediatype, err := contenttype.GetMediaType(req)
 
@@ -73,5 +70,8 @@ func ReadValidBody[T any, PT interface {
 		return nil, logAndCreateError("error ascertaining content type", err)
 	}
 
-	return parsed, nil
+	var validated T
+	validated, err = (*parsed).ValidateAndParse()
+
+	return &validated, err
 }
