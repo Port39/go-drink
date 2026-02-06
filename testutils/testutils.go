@@ -3,8 +3,11 @@ package testutils
 import (
 	"context"
 	"database/sql"
-	_ "modernc.org/sqlite"
+	"slices"
 	"testing"
+
+	"github.com/Port39/go-drink/domain_errors"
+	_ "modernc.org/sqlite"
 )
 
 func GetEmptyDb(t *testing.T) *sql.DB {
@@ -19,6 +22,15 @@ func ExpectError(err error, t *testing.T) {
 	ExpectSuccess(err != nil, t)
 }
 
+func ExpectValidationErrorWithMessage(err *domain_errors.ValidationProblemDetail, msg string, t *testing.T) {
+	t.Helper()
+	ExpectSuccess(err != nil, t)
+
+	ExpectSuccess(slices.ContainsFunc(err.Messages, func(m domain_errors.ValidationMessage) bool {
+		return m.Message == msg
+	}), t)
+}
+
 func ExpectErrorWithMessage(err error, msg string, t *testing.T) {
 	t.Helper()
 	ExpectError(err, t)
@@ -28,6 +40,18 @@ func ExpectErrorWithMessage(err error, msg string, t *testing.T) {
 }
 
 func FailOnError(err error, t *testing.T) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func ExpectValidationError(err *domain_errors.ValidationProblemDetail, t *testing.T) {
+	t.Helper()
+	ExpectSuccess(err != nil, t)
+}
+
+func FailOnValidationError(err *domain_errors.ValidationProblemDetail, t *testing.T) {
 	t.Helper()
 	if err != nil {
 		t.Fatal(err)

@@ -20,6 +20,9 @@ import (
 	"github.com/google/uuid"
 )
 
+func validationErrorContext(ctx context.Context, err *domain_errors.ValidationProblemDetail) (context.Context, any) {
+	return handlehttp.ContextWithStatus(ctx, err.Status), err
+}
 func errorWithContext(ctx context.Context, status int) (context.Context, any) {
 	return handlehttp.ContextWithStatus(ctx, status), domain_errors.ForStatus(status)
 }
@@ -39,13 +42,13 @@ var getItems handlehttp.RequestHandler = func(r *http.Request) (context.Context,
 }
 
 var addItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	req, err := handlehttp.ReadValidBody[addItemRequest](r)
+	req, valErr := handlehttp.ReadValidBody[addItemRequest](r)
 
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 
-	_, err = items.GetItemByName(r.Context(), req.Name, database)
+	_, err := items.GetItemByName(r.Context(), req.Name, database)
 	log.Println(err)
 
 	if err == nil {
@@ -71,10 +74,10 @@ var addItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, 
 }
 
 var updateItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	req, err := handlehttp.ReadValidBody[updateItemRequest](r)
+	req, valErr := handlehttp.ReadValidBody[updateItemRequest](r)
 
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 
 	item, err := items.GetItemByName(r.Context(), req.Name, database)
@@ -117,14 +120,14 @@ var getUsersWithNoneAuth handlehttp.RequestHandler = func(r *http.Request) (cont
 }
 
 var registerWithPassword handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	req, err := handlehttp.ReadValidBody[passwordRegistrationRequest](r)
+	req, valErr := handlehttp.ReadValidBody[passwordRegistrationRequest](r)
 
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 	defer r.Body.Close()
 
-	_, err = users.GetUserForUsername(r.Context(), req.Username, database)
+	_, err := users.GetUserForUsername(r.Context(), req.Username, database)
 	if err == nil {
 		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "Username already taken")
 	}
@@ -177,10 +180,10 @@ var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (context.Con
 		return errorWithContext(r.Context(), http.StatusUnauthorized)
 	}
 
-	req, err := handlehttp.ReadValidBody[addAuthMethodRequest](r)
+	req, valErr := handlehttp.ReadValidBody[addAuthMethodRequest](r)
 
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 
 	data, _ := hex.DecodeString(req.Data) // already checked in the validate function
@@ -199,10 +202,10 @@ var addAuthMethod handlehttp.RequestHandler = func(r *http.Request) (context.Con
 }
 
 var loginWithPassword handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	req, err := handlehttp.ReadValidBody[passwordLoginRequest](r)
+	req, valErr := handlehttp.ReadValidBody[passwordLoginRequest](r)
 
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 	defer r.Body.Close()
 
@@ -249,10 +252,10 @@ var loginCash handlehttp.RequestHandler = func(r *http.Request) (context.Context
 }
 
 var loginNone handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	req, err := handlehttp.ReadValidBody[noneLoginRequest](r)
+	req, valErr := handlehttp.ReadValidBody[noneLoginRequest](r)
 
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 	defer r.Body.Close()
 
@@ -276,10 +279,10 @@ var loginNone handlehttp.RequestHandler = func(r *http.Request) (context.Context
 }
 
 var loginNFC handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	req, err := handlehttp.ReadValidBody[nfcLoginRequest](r)
+	req, valErr := handlehttp.ReadValidBody[nfcLoginRequest](r)
 
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 	defer r.Body.Close()
 
@@ -337,9 +340,9 @@ var buyItem handlehttp.RequestHandler = func(r *http.Request) (context.Context, 
 		return errorWithContext(r.Context(), http.StatusUnauthorized)
 	}
 
-	req, err := handlehttp.ReadValidBody[buyItemRequest](r)
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	req, valErr := handlehttp.ReadValidBody[buyItemRequest](r)
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 
 	item, err := items.GetItemById(r.Context(), req.ItemId, database)
@@ -447,9 +450,9 @@ var changeCredit handlehttp.RequestHandler = func(r *http.Request) (context.Cont
 		log.Println("Error getting user:", err)
 		return errorWithContext(r.Context(), http.StatusInternalServerError)
 	}
-	req, err := handlehttp.ReadValidBody[changeCreditRequest](r)
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	req, valErr := handlehttp.ReadValidBody[changeCreditRequest](r)
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 
 	if user.Credit+req.Diff < 0 {
@@ -466,9 +469,9 @@ var changeCredit handlehttp.RequestHandler = func(r *http.Request) (context.Cont
 }
 
 var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	req, err := handlehttp.ReadValidBody[requestPasswordResetRequest](r)
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	req, valErr := handlehttp.ReadValidBody[requestPasswordResetRequest](r)
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
 
 	// doing things async, so response timing is not affected by the process.
@@ -482,11 +485,11 @@ var requestPasswordReset handlehttp.RequestHandler = func(r *http.Request) (cont
 }
 
 var resetPassword handlehttp.RequestHandler = func(r *http.Request) (context.Context, any) {
-	req, err := handlehttp.ReadValidBody[resetPasswordRequest](r)
-	if err != nil {
-		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, err.Error())
+	req, valErr := handlehttp.ReadValidBody[resetPasswordRequest](r)
+	if valErr != nil {
+		return validationErrorContext(r.Context(), valErr)
 	}
-	err = users.ResetPassword(r.Context(), req.Token, req.Password, database)
+	err := users.ResetPassword(r.Context(), req.Token, req.Password, database)
 	if err != nil {
 		log.Println("Error resetting password:", err)
 		return errorWithContextAndDetail(r.Context(), http.StatusBadRequest, "Error resetting password")

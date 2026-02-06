@@ -2,24 +2,32 @@ package handlehttp
 
 import (
 	"encoding/json"
-	"errors"
-	contenttype "github.com/Port39/go-drink/handlehttp/content-type"
-	"github.com/gorilla/schema"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/Port39/go-drink/domain_errors"
+	contenttype "github.com/Port39/go-drink/handlehttp/content-type"
+	"github.com/gorilla/schema"
 )
 
-func logAndCreateError(message string, err error) error {
+func logAndCreateError(message string, err error) *domain_errors.ValidationProblemDetail {
 	log.Println(message, err)
-	return errors.New(message)
+
+	valErr := domain_errors.NewValidationProblemDetail(
+		domain_errors.ValidationMessage{
+			Message: err.Error(),
+		},
+	)
+
+	return &valErr
 }
 
 type Parseable[T any] interface {
-	ValidateAndParse() (T, error)
+	ValidateAndParse() (T, *domain_errors.ValidationProblemDetail)
 }
 
-func readValidJsonBody[T any](r *http.Request, dest *T) error {
+func readValidJsonBody[T any](r *http.Request, dest *T) *domain_errors.ValidationProblemDetail {
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		return logAndCreateError("error reading request body", err)
@@ -36,7 +44,7 @@ func readValidJsonBody[T any](r *http.Request, dest *T) error {
 
 var decoder = schema.NewDecoder()
 
-func readValidFormBody[T any](r *http.Request, dest *T) error {
+func readValidFormBody[T any](r *http.Request, dest *T) *domain_errors.ValidationProblemDetail {
 	err := r.ParseForm()
 
 	if err != nil {
@@ -52,7 +60,7 @@ func readValidFormBody[T any](r *http.Request, dest *T) error {
 	return nil
 }
 
-func ReadValidBody[T Parseable[T]](req *http.Request) (*T, error) {
+func ReadValidBody[T Parseable[T]](req *http.Request) (*T, *domain_errors.ValidationProblemDetail) {
 	var parsed = new(T)
 	mediatype, err := contenttype.GetMediaType(req)
 
@@ -60,18 +68,19 @@ func ReadValidBody[T Parseable[T]](req *http.Request) (*T, error) {
 		return nil, logAndCreateError("error ascertaining content type", err)
 	}
 
+	var valErr *domain_errors.ValidationProblemDetail
 	if Json.Equal(mediatype) {
-		err = readValidJsonBody(req, parsed)
+		valErr = readValidJsonBody(req, parsed)
 	} else {
-		err = readValidFormBody(req, parsed)
+		valErr = readValidFormBody(req, parsed)
 	}
 
-	if err != nil {
-		return nil, logAndCreateError("error ascertaining content type", err)
+	if valErr != nil {
+		return nil, valErr
 	}
 
 	var validated T
-	validated, err = (*parsed).ValidateAndParse()
+	validated, validationErr := (*parsed).ValidateAndParse()
 
-	return &validated, err
+	return &validated, validationErr
 }

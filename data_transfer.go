@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
+	"regexp"
+	"strconv"
+
+	"github.com/Port39/go-drink/domain_errors"
 	"github.com/Port39/go-drink/users"
 	"github.com/google/uuid"
-	"regexp"
 )
 
 var (
@@ -20,18 +22,13 @@ type passwordRegistrationRequest struct {
 	Password string `json:"password"`
 }
 
-func (p passwordRegistrationRequest) ValidateAndParse() (passwordRegistrationRequest, error) {
-	if !UsernameRegex.MatchString(p.Username) {
-		return p, errors.New("invalid username")
-	}
-	if p.Email != "" && !EmailRegex.MatchString(p.Email) {
-		return p, errors.New("invalid email")
-	}
-	return p, validatePassword(p.Password)
-}
+func (r passwordRegistrationRequest) ValidateAndParse() (passwordRegistrationRequest, *domain_errors.ValidationProblemDetail) {
 
-func (p passwordLoginRequest) ValidateAndParse() (passwordLoginRequest, error) {
-	return p, nil
+	errs := checkUsername(r.Username, "username")
+	errs = append(errs, checkEmail(r.Email, "email")...)
+	errs = append(errs, validatePassword(r.Password)...)
+
+	return withValidationErr(r, errs)
 }
 
 type passwordLoginRequest struct {
@@ -39,20 +36,27 @@ type passwordLoginRequest struct {
 	Password string `json:"password"`
 }
 
-func (p noneLoginRequest) ValidateAndParse() (noneLoginRequest, error) {
-	return p, nil
+func (r passwordLoginRequest) ValidateAndParse() (passwordLoginRequest, *domain_errors.ValidationProblemDetail) {
+	errs := []domain_errors.ValidationMessage{}
+	return withValidationErr(r, errs)
 }
 
 type noneLoginRequest struct {
 	Username string `json:"username"`
 }
 
-func (p nfcLoginRequest) ValidateAndParse() (nfcLoginRequest, error) {
-	return p, nil
+func (r noneLoginRequest) ValidateAndParse() (noneLoginRequest, *domain_errors.ValidationProblemDetail) {
+	errs := []domain_errors.ValidationMessage{}
+	return withValidationErr(r, errs)
 }
 
 type nfcLoginRequest struct {
 	Token string `json:"token"`
+}
+
+func (r nfcLoginRequest) ValidateAndParse() (nfcLoginRequest, *domain_errors.ValidationProblemDetail) {
+	errs := []domain_errors.ValidationMessage{}
+	return withValidationErr(r, errs)
 }
 
 type loginResponse struct {
@@ -68,21 +72,12 @@ type addItemRequest struct {
 	Barcode string `json:"barcode"`
 }
 
-func (r addItemRequest) ValidateAndParse() (addItemRequest, error) {
-	if len(r.Name) > 64 {
-		return r, errors.New("name to long")
-	}
-	data, err := base64.StdEncoding.DecodeString(r.Image)
-	if err != nil {
-		return r, err
-	}
-	if len(data) > 2097152 {
-		return r, errors.New("image to large (max 2MiB allowed)")
-	}
-	if r.Amount < 0 {
-		return r, errors.New("amount must not be negative")
-	}
-	return r, nil
+func (r addItemRequest) ValidateAndParse() (addItemRequest, *domain_errors.ValidationProblemDetail) {
+	errs := checkLength(r.Name, 64, "name")
+	errs = append(errs, checkDecodeImage(r.Image, 2097152, "image")...)
+	errs = append(errs, checkGte(r.Amount, 1, "amount")...)
+
+	return withValidationErr(r, errs)
 }
 
 type updateItemRequest struct {
@@ -94,27 +89,17 @@ type updateItemRequest struct {
 	Barcode string `json:"barcode"`
 }
 
-func (r updateItemRequest) ValidateAndParse() (updateItemRequest, error) {
-	id, err := uuid.Parse(r.Id)
-	if err != nil {
-		return r, err
+func (r updateItemRequest) ValidateAndParse() (updateItemRequest, *domain_errors.ValidationProblemDetail) {
+	id, errs := parseID(r.Id, "id")
+	if len(errs) == 0 {
+		r.Id = id
 	}
-	r.Id = id.String()
 
-	if len(r.Name) > 64 {
-		return r, errors.New("name too long")
-	}
-	data, err := base64.StdEncoding.DecodeString(r.Image)
-	if err != nil {
-		return r, err
-	}
-	if len(data) > 2097152 {
-		return r, errors.New("image to large (max 2MiB allowed)")
-	}
-	if r.Amount < 0 {
-		return r, errors.New("amount must not be negative")
-	}
-	return r, nil
+	errs = append(errs, checkLength(r.Name, 64, "name")...)
+	errs = append(errs, checkDecodeImage(r.Image, 2097152, "image")...)
+	errs = append(errs, checkGte(r.Amount, 0, "amount")...)
+
+	return withValidationErr(r, errs)
 }
 
 type buyItemRequest struct {
@@ -122,16 +107,15 @@ type buyItemRequest struct {
 	Amount int    `json:"amount"`
 }
 
-func (r buyItemRequest) ValidateAndParse() (buyItemRequest, error) {
-	id, err := uuid.Parse(r.ItemId)
-	if err != nil {
-		return r, err
+func (r buyItemRequest) ValidateAndParse() (buyItemRequest, *domain_errors.ValidationProblemDetail) {
+	id, errs := parseID(r.ItemId, "itemId")
+	if len(errs) == 0 {
+		r.ItemId = id
 	}
-	r.ItemId = id.String()
-	if r.Amount < 1 {
-		return r, errors.New("amount must be at least one item")
-	}
-	return r, nil
+
+	errs = append(errs, checkGte(r.Amount, 1, "amount")...)
+
+	return withValidationErr(r, errs)
 }
 
 type addAuthMethodRequest struct {
@@ -139,40 +123,40 @@ type addAuthMethodRequest struct {
 	Data   string `json:"data"`
 }
 
-func (r addAuthMethodRequest) ValidateAndParse() (addAuthMethodRequest, error) {
-	if r.Method == "none" {
-		return r, nil
-	}
+func (r addAuthMethodRequest) ValidateAndParse() (addAuthMethodRequest, *domain_errors.ValidationProblemDetail) {
+	errs := []domain_errors.ValidationMessage{}
+
 	if r.Method == "nfc" {
 		if r.Data == "" {
-			return r, errors.New("missing nfc uid")
+			errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: "Data", Message: "missing nfc uid"})
 		}
 		_, err := hex.DecodeString(r.Data)
 		if err != nil {
-			return r, err
+			errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: "Data", Message: "can't decode nfc uid"})
 		}
-		return r, nil
+	} else if r.Method != "none" {
+		errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: "", Message: "invalid method"})
 	}
-	return r, errors.New("invalid method")
-}
 
-func (r changeCreditRequest) ValidateAndParse() (changeCreditRequest, error) {
-	return r, nil
+	return withValidationErr(r, errs)
 }
 
 type changeCreditRequest struct {
 	Diff int `json:"diff"`
 }
 
+func (r changeCreditRequest) ValidateAndParse() (changeCreditRequest, *domain_errors.ValidationProblemDetail) {
+	errs := []domain_errors.ValidationMessage{}
+	return withValidationErr(r, errs)
+}
+
 type requestPasswordResetRequest struct {
 	Username string `json:"username"`
 }
 
-func (p requestPasswordResetRequest) ValidateAndParse() (requestPasswordResetRequest, error) {
-	if !UsernameRegex.MatchString(p.Username) {
-		return p, errors.New("invalid username")
-	}
-	return p, nil
+func (r requestPasswordResetRequest) ValidateAndParse() (requestPasswordResetRequest, *domain_errors.ValidationProblemDetail) {
+	errs := checkUsername(r.Username, "username")
+	return withValidationErr(r, errs)
 }
 
 type resetPasswordRequest struct {
@@ -180,21 +164,129 @@ type resetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
-func (p resetPasswordRequest) ValidateAndParse() (resetPasswordRequest, error) {
-	token, err := uuid.Parse(p.Token)
-	if err != nil {
-		return p, err
+func (r resetPasswordRequest) ValidateAndParse() (resetPasswordRequest, *domain_errors.ValidationProblemDetail) {
+	errs := []domain_errors.ValidationMessage{}
+
+	token, err := uuid.Parse(r.Token)
+
+	if err == nil {
+		r.Token = token.String()
+	} else {
+		errs = append(errs, domain_errors.ValidationMessage{
+			Severity: "error",
+			Message:  "Wrong Token Syntax",
+			Field:    "Token",
+		})
 	}
-	p.Token = token.String()
-	return p, validatePassword(p.Password)
+
+	errs = append(errs, validatePassword(r.Password)...)
+
+	return withValidationErr(r, errs)
 }
 
-func validatePassword(password string) error {
+// ---- PRIVATES ----
+
+func withValidationErr[T any](r T, errs []domain_errors.ValidationMessage) (T, *domain_errors.ValidationProblemDetail) {
+	if len(errs) > 0 {
+		validationErr := domain_errors.NewValidationProblemDetail(
+			errs...,
+		)
+		return r, &validationErr
+	}
+
+	return r, nil
+}
+
+func parseID(id string, parName string) (string, []domain_errors.ValidationMessage) {
+	errs := []domain_errors.ValidationMessage{}
+
+	parsedID, err := uuid.Parse(id)
+
+	if err == nil {
+		id = parsedID.String()
+	} else {
+		errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: parName, Message: parName + " is not a valid UUID"})
+	}
+
+	return id, errs
+}
+
+func checkLength(value string, maxLen int, parName string) []domain_errors.ValidationMessage {
+	errs := []domain_errors.ValidationMessage{}
+	if len(value) > maxLen {
+		errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: parName, Message: parName + " too long"})
+	}
+	return errs
+}
+
+func checkGte(value int, min int, parName string) []domain_errors.ValidationMessage {
+	errs := []domain_errors.ValidationMessage{}
+
+	if value < min {
+		errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: parName, Message: parName + " must not be smaller than " + strconv.Itoa(min)})
+	}
+
+	return errs
+}
+func checkUsername(username string, parName string) []domain_errors.ValidationMessage {
+	errs := []domain_errors.ValidationMessage{}
+
+	if !UsernameRegex.MatchString(username) {
+		errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: parName, Message: parName + " invalid"})
+	}
+
+	return errs
+}
+func checkEmail(email string, parName string) []domain_errors.ValidationMessage {
+	errs := []domain_errors.ValidationMessage{}
+
+	if email != "" && !EmailRegex.MatchString(email) {
+		errs = append(errs, domain_errors.ValidationMessage{
+			Field:    parName,
+			Message:  parName + " invalid",
+			Severity: "error",
+		})
+	}
+
+	return errs
+}
+
+func checkDecodeImage(image string, maxLen int, parName string) []domain_errors.ValidationMessage {
+	errs := []domain_errors.ValidationMessage{}
+
+	data, err := base64.StdEncoding.DecodeString(image)
+	if err != nil {
+		errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: parName, Message: "Image can't be decoded. Are you using Base64?"})
+	}
+
+	if len(data) > maxLen {
+		errs = append(errs, domain_errors.ValidationMessage{Severity: "error", Field: parName, Message: "Image too large (max 2MiB allowed)"})
+	}
+
+	return errs
+}
+
+func validatePassword(password string) []domain_errors.ValidationMessage {
+	errs := []domain_errors.ValidationMessage{}
+	msg := ""
+
 	if users.Entropy([]byte(password)) < 0.4 {
-		return errors.New("the password is not random enough")
+		msg = "The password is not random enough"
 	}
 	if users.CheckHIBP(password) {
-		return errors.New("this password has been breached before")
+		msg = "this password has been breached before"
 	}
-	return nil
+	if "" == msg {
+		return nil
+	}
+
+	errs = append(errs,
+		domain_errors.ValidationMessage{
+			Field:    "password",
+			Message:  msg,
+			Severity: "error",
+		},
+	)
+
+	return errs
 }
